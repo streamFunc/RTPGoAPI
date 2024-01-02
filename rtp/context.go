@@ -14,6 +14,7 @@ import "C"
 import "C"
 import (
 	"fmt"
+	"reflect"
 	"unsafe"
 )
 
@@ -23,7 +24,21 @@ func RcvCb(buf *C.uint8_t, len C.int, marker C.int, user unsafe.Pointer) C.int {
 
 	}
 
-	fmt.Println("Receive payload len=", len, "seq=", C.GetSequenceNumber(user), " from ssrc=", C.GetSsrc(user))
+	fmt.Println("Receive payload len=", len, "seq=", C.GetSequenceNumber(user), " from ssrc=", C.GetSsrc(user), " marker=", marker, " user=", user)
+
+	handle := (*CRtpSessionContext)(user)
+	//length := int(len)
+	//slice := (*[1 << 30]byte)(unsafe.Pointer(buf))[:length:length]
+	nUser := GlobalCRtpSessionMap[handle]
+
+	length := int(len)
+	slice := make([]byte, length)
+	header := (*reflect.SliceHeader)(unsafe.Pointer(&slice))
+	header.Data = uintptr(unsafe.Pointer(buf))
+
+	// Parse RTP payload
+	payload := parseRtpPayload(slice)
+	nUser.HandleCallBackData(payload, int(marker))
 
 	return len
 
@@ -42,6 +57,13 @@ func creatRtpInitData(localIp, remoteIp string, localPort, remotePort, payloadTy
 	defer C.free(unsafe.Pointer(r))
 
 	return (*CRtpSessionInitData)(C.CreateRtpSessionInitData(l, r, (C.int)(localPort), (C.int)(remotePort), (C.int)(payloadType), (C.int)(clockRate)))
+}
+
+func parseRtpPayload(buf []byte) []byte {
+	// RTP header is usually 12 bytes
+	headerSize := 12
+	payload := buf[headerSize:]
+	return payload
 }
 
 func (init *CRtpSessionInitData) destroySessionInitData() {
@@ -108,8 +130,8 @@ func (rtp *CRtpSessionContext) getSsrc() int {
 
 func (rtp *CRtpSessionContext) getCSrc() []uint32 {
 	t := C.GetCsrc(unsafe.Pointer(rtp))
-	len := 16
-	csSrc := (*[1 << 30]C.uint32_t)(unsafe.Pointer(t))[:len:len] // 使用切片将指针转换为Go的uint32切片
+	dataLen := 16
+	csSrc := (*[1 << 30]C.uint32_t)(unsafe.Pointer(t))[:dataLen:dataLen] // 使用切片将指针转换为Go的uint32切片
 	return *(*[]uint32)(unsafe.Pointer(&csSrc))
 }
 
