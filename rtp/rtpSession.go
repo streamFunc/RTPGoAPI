@@ -16,6 +16,7 @@ type CRtpSession struct {
 	PayloadType, ClockRate, Mode int
 	startFlag                    bool
 	frameBufData                 []byte
+	HandleC                      chan *RPacket
 	fp                           *os.File
 	ctx                          *CRtpSessionContext
 	ini                          *CRtpSessionInitData
@@ -35,6 +36,7 @@ func NewRtpSession(localIp, remoteIp string, mode, localPort, remotePort, payloa
 	}
 	dec.ctx = newSessionContext(dec.Mode)
 	dec.ini = creatRtpInitData(localIp, remoteIp, localPort, remotePort, payloadType, clockRate)
+	dec.HandleC = make(chan *RPacket, 120)
 
 	if dec.ctx == nil || dec.ini == nil {
 		fmt.Printf("NewRtpSession error creat dec.ctx or dec.ini fail\n")
@@ -100,6 +102,11 @@ func (n *CRtpSession) StopSession() error {
 			}
 			fmt.Printf("StopSession success\n")
 		}
+		if n.HandleC != nil {
+			// notify packet handler
+			close(n.HandleC)
+			n.HandleC = nil
+		}
 	} else {
 		return errors.New(fmt.Sprintf("ctx nil StopSession fail"))
 	}
@@ -125,13 +132,9 @@ func (n *CRtpSession) ReceiveData(buffer []byte, len int) error {
 	return nil
 }
 
-func (n *CRtpSession) HandleCallBackData(data []byte, marker int) {
-	//	fmt.Printf("HandleCallBackData received data:%v  marker:%d\n", len(data), marker)
-	if marker == 0 {
-		n.unPackRTP2H264(data, false)
-	} else {
-		n.unPackRTP2H264(data, true)
-	}
+func (n *CRtpSession) HandleCallBackData(data []byte, marker bool) {
+	n.unPackRTP2H264(data, marker)
+
 }
 
 func (n *CRtpSession) Destroy() {
@@ -145,27 +148,27 @@ func (n *CRtpSession) Destroy() {
 	}
 }
 
-func (n *CRtpSession) GetTimeStamp() int {
+func (n *CRtpSession) GetTimeStamp() uint32 {
 	if n.ctx != nil {
 		return n.ctx.getTimeStamp()
 	} else {
-		return -1
+		return 0
 	}
 }
 
-func (n *CRtpSession) GetSequenceNumber() int {
+func (n *CRtpSession) GetSequenceNumber() uint16 {
 	if n.ctx != nil {
 		return n.ctx.getSequenceNumber()
 	} else {
-		return -1
+		return 0
 	}
 }
 
-func (n *CRtpSession) GetSsrc() int {
+func (n *CRtpSession) GetSsrc() uint32 {
 	if n.ctx != nil {
 		return n.ctx.getSsrc()
 	} else {
-		return -1
+		return 0
 	}
 }
 
@@ -177,11 +180,11 @@ func (n *CRtpSession) GetCSrc() []uint32 {
 	}
 }
 
-func (n *CRtpSession) GetPayloadType() int {
+func (n *CRtpSession) GetPayloadType() uint16 {
 	if n.ctx != nil {
 		return n.ctx.getPayloadType()
 	} else {
-		return -1
+		return 0
 	}
 }
 
@@ -193,11 +196,11 @@ func (n *CRtpSession) GetMarker() bool {
 	}
 }
 
-func (n *CRtpSession) GetVersion() int {
+func (n *CRtpSession) GetVersion() uint8 {
 	if n.ctx != nil {
 		return n.ctx.getVersion()
 	} else {
-		return -1
+		return 0
 	}
 }
 
@@ -217,12 +220,16 @@ func (n *CRtpSession) GetExtension() bool {
 	}
 }
 
-func (n *CRtpSession) GetCC() int {
+func (n *CRtpSession) GetCC() uint8 {
 	if n.ctx != nil {
 		return n.ctx.getCC()
 	} else {
-		return -1
+		return 0
 	}
+}
+
+func (n *CRtpSession) receiveRtpCache(pl *RPacket) {
+	n.HandleC <- pl
 }
 
 func (n *CRtpSession) unPackRTP2H264(rtpPayload []byte, marker bool) {

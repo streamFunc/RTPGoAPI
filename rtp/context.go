@@ -13,32 +13,58 @@ import "C"
 //#include "cgo_RtpSessionManager.h"
 import "C"
 import (
-	"fmt"
-	"reflect"
 	"unsafe"
 )
+
+type RPacket struct {
+	Payload     []byte // rtp payload
+	RawBuffer   []byte // rtp payload + rtp header
+	PayloadType uint8
+	Pts         uint32 // presentation timestamp
+	Marker      bool   // should mark-bit in rtp header be set?
+	Ssrc        uint32
+	Csrc        []uint32
+	Seq         uint16
+}
 
 //export RcvCb
 func RcvCb(buf *C.uint8_t, len C.int, marker C.int, user unsafe.Pointer) C.int {
 	if user == nil && marker == 1 || buf == nil {
-
+		return -1
 	}
-
-	fmt.Println("Receive payload len=", len, "seq=", C.GetSequenceNumber(user), " from ssrc=", C.GetSsrc(user), " marker=", marker, " user=", user)
+	//fmt.Println("Receive payload len=", len, "seq=", C.GetSequenceNumber(user), " from ssrc=", C.GetSsrc(user), " marker=", marker, " user=", user, " pt=", C.GetPayloadType(user))
 
 	handle := (*CRtpSessionContext)(user)
-	//length := int(len)
-	//slice := (*[1 << 30]byte)(unsafe.Pointer(buf))[:length:length]
-	nUser := GlobalCRtpSessionMap[handle]
-
 	length := int(len)
+	data := (*[1 << 30]byte)(unsafe.Pointer(buf))[:length:length]
+
 	slice := make([]byte, length)
-	header := (*reflect.SliceHeader)(unsafe.Pointer(&slice))
-	header.Data = uintptr(unsafe.Pointer(buf))
+	copy(slice, data)
+	nUser := GlobalCRtpSessionMap[handle]
 
 	// Parse RTP payload
 	payload := parseRtpPayload(slice)
-	nUser.HandleCallBackData(payload, int(marker))
+
+	var flag bool
+	if marker == 0 {
+		flag = false
+	} else {
+		flag = true
+	}
+
+	rp := &RPacket{
+		Payload:     payload,
+		RawBuffer:   slice,
+		Pts:         handle.getTimeStamp(),
+		Marker:      flag,
+		PayloadType: uint8(handle.getPayloadType()),
+		Ssrc:        handle.getSsrc(),
+		Csrc:        handle.getCSrc(),
+		Seq:         handle.getSequenceNumber(),
+	}
+
+	//nUser.HandleCallBackData(payload, flag)
+	nUser.receiveRtpCache(rp)
 
 	return len
 
@@ -113,19 +139,19 @@ func (rtp *CRtpSessionContext) rcvDataWithTsRtpSession(buffer []byte, len, ts in
 	return int(C.RcvDataWithTsRtpSession(rtp, (*C.uint8_t)(unsafe.Pointer(&buffer[0])), (C.int)(len), (C.uint32_t)(ts), rcvCb, user))
 }*/
 
-func (rtp *CRtpSessionContext) getTimeStamp() int {
+func (rtp *CRtpSessionContext) getTimeStamp() uint32 {
 	t := C.GetTimeStamp(unsafe.Pointer(rtp))
-	return int(t)
+	return uint32(t)
 }
 
-func (rtp *CRtpSessionContext) getSequenceNumber() int {
+func (rtp *CRtpSessionContext) getSequenceNumber() uint16 {
 	t := C.GetSequenceNumber(unsafe.Pointer(rtp))
-	return int(t)
+	return uint16(t)
 }
 
-func (rtp *CRtpSessionContext) getSsrc() int {
+func (rtp *CRtpSessionContext) getSsrc() uint32 {
 	t := C.GetSsrc(unsafe.Pointer(rtp))
-	return int(t)
+	return uint32(t)
 }
 
 func (rtp *CRtpSessionContext) getCSrc() []uint32 {
@@ -135,9 +161,9 @@ func (rtp *CRtpSessionContext) getCSrc() []uint32 {
 	return *(*[]uint32)(unsafe.Pointer(&csSrc))
 }
 
-func (rtp *CRtpSessionContext) getPayloadType() int {
+func (rtp *CRtpSessionContext) getPayloadType() uint16 {
 	t := C.GetPayloadType(unsafe.Pointer(rtp))
-	return int(t)
+	return uint16(t)
 }
 
 func (rtp *CRtpSessionContext) getMarker() bool {
@@ -145,9 +171,9 @@ func (rtp *CRtpSessionContext) getMarker() bool {
 	return bool(t)
 }
 
-func (rtp *CRtpSessionContext) getVersion() int {
+func (rtp *CRtpSessionContext) getVersion() uint8 {
 	t := C.GetVersion(unsafe.Pointer(rtp))
-	return int(t)
+	return uint8(t)
 }
 
 func (rtp *CRtpSessionContext) getPadding() bool {
@@ -160,7 +186,7 @@ func (rtp *CRtpSessionContext) getExtension() bool {
 	return bool(t)
 }
 
-func (rtp *CRtpSessionContext) getCC() int {
+func (rtp *CRtpSessionContext) getCC() uint8 {
 	t := C.GetCC(unsafe.Pointer(rtp))
-	return int(t)
+	return uint8(t)
 }
