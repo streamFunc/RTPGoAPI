@@ -25,3 +25,9 @@ func (ss *SsrcStream) SetProfile(profileName string, dynamicTypeNumber uint8) bo
 }
 
 type streamOutMap map[uint32]*SsrcStream
+
+type Error string
+
+func (s Error) Error() string {
+	return string(s)
+}

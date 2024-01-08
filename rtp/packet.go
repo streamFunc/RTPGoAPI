@@ -15,6 +15,10 @@ func (rp *DataPacket) Payload() []byte {
 	return rp.payload
 }
 
+func (rp *DataPacket) PayloadType() uint8 {
+	return rp.payloadType
+}
+
 func (rp *DataPacket) Buffer() []byte {
 	return rp.rawBuffer
 }

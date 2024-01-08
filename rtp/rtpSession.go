@@ -165,7 +165,7 @@ func (n *Session) CloseSession() error {
 	return nil
 }
 
-func (n *Session) WriteData(rp *DataPacket) error {
+func (n *Session) WriteData(rp *DataPacket) (k int, err error) {
 	if n.ctx != nil && n.startFlag {
 		if rp.marker {
 			n.ctx.sendDataRtpSession(rp.payload, len(rp.payload), 1)
@@ -174,9 +174,9 @@ func (n *Session) WriteData(rp *DataPacket) error {
 		}
 
 	} else {
-		return errors.New(fmt.Sprintf("ctx nil SendData fail"))
+		return 0, Error("WriteData fail.")
 	}
-	return nil
+	return 0, nil
 }
 
 func (n *Session) initSession() error {
@@ -378,7 +378,7 @@ func (n *Session) SsrcStreamOutForIndex(streamIndex uint32) *SsrcStream {
 	return n.streamsOut[streamIndex]
 }
 
-func (n *Session) NewSsrcStreamOut(own *Address, ssrc uint32, sequenceNo uint16) (index uint32, err error) {
+func (n *Session) NewSsrcStreamOut(own *Address, ssrc uint32, sequenceNo uint16) (index uint32, err Error) {
 	str := &SsrcStream{
 		sequenceNumber: sequenceNo,
 		ssrc:           ssrc,
@@ -386,7 +386,7 @@ func (n *Session) NewSsrcStreamOut(own *Address, ssrc uint32, sequenceNo uint16)
 	n.streamsOut[n.streamOutIndex] = str
 	index = n.streamOutIndex
 	n.streamOutIndex++
-	return index, nil
+	return index, ""
 }
 
 func (n *Session) GetTimeStamp() uint32 {

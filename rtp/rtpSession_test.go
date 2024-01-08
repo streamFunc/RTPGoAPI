@@ -80,7 +80,7 @@ func TestRtp(t *testing.T) {
 	rp.SetPayloadType(123)
 	rp.SetMarker(true)
 
-	if err := r.WriteData(rp); err != nil {
+	if _, err := r.WriteData(rp); err != nil {
 		fmt.Println("send fail,error:", err)
 	} else {
 		fmt.Printf("send data success\n")
