@@ -2,6 +2,7 @@ package rtp
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"sync/atomic"
@@ -34,33 +35,52 @@ func onSignal(sig chan os.Signal) {
 func TestRtp(t *testing.T) {
 	registerSignal()
 
-	r := NewRtpSession("127.0.0.1", "127.0.0.1", 0, 11000, 11002, 96, 90000)
-	if err := r.InitSession(); err != nil {
-		fmt.Println("error:", err)
-		return
+	var tpLocal *TransportUDP
+	var local, _ = net.ResolveIPAddr("ip", "127.0.0.1")
+	var remote, _ = net.ResolveIPAddr("ip", "127.0.0.1")
+
+	tpLocal, _ = NewTransportUDP(local, 11000, "")
+
+	r := NewSession(tpLocal, tpLocal)
+
+	strLocalIdx, _ := r.NewSsrcStreamOut(&Address{
+		IPAddr:   local.IP,
+		DataPort: 11000,
+		CtrlPort: 1 + 11000,
+		Zone:     "",
+	}, 0, 0)
+
+	fmt.Printf("strLocalIdx:%v\n", strLocalIdx)
+
+	ok := r.SsrcStreamOutForIndex(strLocalIdx).SetProfile("AMR", byte(123))
+	if ok {
+		fmt.Printf("SsrcStreamOutForIndex success\n")
 	}
+
+	r.AddRemote(&Address{
+		IPAddr:   remote.IP,
+		DataPort: 11002,
+		CtrlPort: 1 + 11002,
+		Zone:     "",
+	})
+
 	if err := r.StartSession(); err != nil {
 		fmt.Println("error:", err)
 		return
 	}
 
-	fmt.Printf("seq:%v pt:%v\n", r.GetSequenceNumber(), r.GetPayloadType())
+	go startRtpReceiveLoop(r)
 
-	const rcvLen int = 1024
-	var rcvBuf []byte
-	rcvBuf = make([]byte, 1024)
-	go func() {
-		for !gStopFlag.Load() {
-			if err := r.ReceiveData(rcvBuf, rcvLen); err != nil {
-				fmt.Println("received fail,error:", err)
-			}
-			time.Sleep(time.Millisecond)
-		}
-	}()
+	fmt.Printf("seq:%v pt:%v\n", r.GetSequenceNumber(), r.GetPayloadType())
 
 	payLoad := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9}
 
-	if err := r.SendData(payLoad, 10, 0); err != nil {
+	rp := r.NewDataPacket(0)
+	rp.SetPayload(payLoad)
+	rp.SetPayloadType(123)
+	rp.SetMarker(true)
+
+	if err := r.WriteData(rp); err != nil {
 		fmt.Println("send fail,error:", err)
 	} else {
 		fmt.Printf("send data success\n")
@@ -69,7 +89,22 @@ func TestRtp(t *testing.T) {
 	time.Sleep(time.Second * 30)
 	gStopFlag.Store(true)
 
-	r.StopSession()
-	r.Destroy()
+	r.CloseSession()
 
+}
+
+func startRtpReceiveLoop(rp *Session) {
+	for {
+		if !rp.startFlag {
+			break
+		}
+		select {
+		case pl, more := <-rp.HandleC:
+			if !more {
+				return
+			}
+			fmt.Printf("startRtpReceiveLoop seq:%v payload:%v PayloadType:%v marker:%v", pl.seq, len(pl.payload), pl.payloadType, pl.marker)
+			return
+		}
+	}
 }

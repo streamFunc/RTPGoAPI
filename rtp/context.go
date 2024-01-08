@@ -16,17 +16,6 @@ import (
 	"unsafe"
 )
 
-type RPacket struct {
-	Payload     []byte // rtp payload
-	RawBuffer   []byte // rtp payload + rtp header
-	PayloadType uint8
-	Pts         uint32 // presentation timestamp
-	Marker      bool   // should mark-bit in rtp header be set?
-	Ssrc        uint32
-	Csrc        []uint32
-	Seq         uint16
-}
-
 //export RcvCb
 func RcvCb(buf *C.uint8_t, len C.int, marker C.int, user unsafe.Pointer) C.int {
 	if user == nil && marker == 1 || buf == nil {
@@ -52,15 +41,15 @@ func RcvCb(buf *C.uint8_t, len C.int, marker C.int, user unsafe.Pointer) C.int {
 		flag = true
 	}
 
-	rp := &RPacket{
-		Payload:     payload,
-		RawBuffer:   slice,
-		Pts:         handle.getTimeStamp(),
-		Marker:      flag,
-		PayloadType: uint8(handle.getPayloadType()),
-		Ssrc:        handle.getSsrc(),
-		Csrc:        handle.getCSrc(),
-		Seq:         handle.getSequenceNumber(),
+	rp := &DataPacket{
+		payload:     payload,
+		rawBuffer:   slice,
+		pts:         handle.getTimeStamp(),
+		marker:      flag,
+		payloadType: uint8(handle.getPayloadType()),
+		ssrc:        handle.getSsrc(),
+		csrc:        handle.getCSrc(),
+		seq:         handle.getSequenceNumber(),
 	}
 
 	//nUser.HandleCallBackData(payload, flag)
