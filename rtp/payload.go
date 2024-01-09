@@ -110,11 +110,12 @@ func (profile *AVProfile) Name() string {
 	}
 }
 
-func initPayLoadOnce() {
+func initConfigOnce() {
 	initOnceT.Do(initPayLoad)
 }
 
 func initPayLoad() {
+	GlobalCRtpSessionMap = make(map[*CRtpSessionContext]*Session)
 	profiles := []*AVProfile{
 		{0, Audio, 8000, 1, "PCMU", ""},
 		{3, Audio, 8000, 1, "GSM", ""},

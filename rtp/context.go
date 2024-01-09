@@ -13,6 +13,7 @@ import "C"
 //#include "cgo_RtpSessionManager.h"
 import "C"
 import (
+	"fmt"
 	"unsafe"
 )
 
@@ -88,8 +89,10 @@ func (init *CRtpSessionInitData) destroySessionInitData() {
 func newSessionContext(mode int) *CRtpSessionContext {
 	var t C.CRtpSessionType
 	if mode == 0 {
+		fmt.Printf("is ortp\n")
 		t = C.CRtpSessionType_ORTP
 	} else {
+		fmt.Printf("is jrtp\n")
 		t = C.CRtpSessionType_JRTP
 	}
 	return (*CRtpSessionContext)(C.CreateRtpSession(t))

@@ -40,6 +40,7 @@ func TestRtp(t *testing.T) {
 	var remote, _ = net.ResolveIPAddr("ip", "127.0.0.1")
 
 	tpLocal, _ = NewTransportUDP(local, 11000, "")
+	tpLocal.SetRtpMode(1)
 
 	r := NewSession(tpLocal, tpLocal)
 
@@ -50,9 +51,7 @@ func TestRtp(t *testing.T) {
 		Zone:     "",
 	}, 0, 0)
 
-	fmt.Printf("strLocalIdx:%v\n", strLocalIdx)
-
-	ok := r.SsrcStreamOutForIndex(strLocalIdx).SetProfile("AMR", byte(123))
+	ok := r.SsrcStreamOutForIndex(strLocalIdx).SetProfile("H264", byte(123))
 	if ok {
 		fmt.Printf("SsrcStreamOutForIndex success\n")
 	}
@@ -70,8 +69,6 @@ func TestRtp(t *testing.T) {
 	}
 
 	go startRtpReceiveLoop(r)
-
-	fmt.Printf("seq:%v pt:%v\n", r.GetSequenceNumber(), r.GetPayloadType())
 
 	payLoad := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9}
 

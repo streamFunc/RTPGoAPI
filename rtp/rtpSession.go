@@ -44,30 +44,27 @@ type Address struct {
 	Zone               string
 }
 
-// NewSession mode 0 ORTP 1 JRTP
 func NewSession(rp *TransportUDP, tv TransportRecv) *Session {
 	dec := Session{
-		startFlag:   false,
-		LocalIp:     rp.localAddrRtp.IP.String(),
-		LocalPort:   rp.localAddrRtp.Port,
-		PayloadType: rp.payloadType,
-		ClockRate:   rp.clockRate,
-		Mode:        rp.mode,
+		startFlag:      false,
+		LocalIp:        rp.localAddrRtp.IP.String(),
+		LocalPort:      rp.localAddrRtp.Port,
+		PayloadType:    rp.payloadType,
+		ClockRate:      rp.clockRate,
+		Mode:           rp.mode,
+		streamOutIndex: 0,
 	}
 	dec.streamsOut = make(streamOutMap, maxNumberOutStreams)
 	dec.ctx = newSessionContext(dec.Mode)
-	//	dec.ini = creatRtpInitData(localIp, remoteIp, localPort, remotePort, payloadType, clockRate)
 	dec.HandleC = make(chan *DataPacket, 120)
-	dec.streamOutIndex = 0
 
-	initPayLoadOnce()
+	initConfigOnce()
 
 	if dec.ctx == nil {
 		fmt.Printf("NewRtpSession error creat dec.ctx or dec.ini fail\n")
 		return nil
 	}
 
-	GlobalCRtpSessionMap = make(map[*CRtpSessionContext]*Session)
 	GlobalCRtpSessionMap[dec.ctx] = &dec
 
 	fmt.Printf("localIp:%v port:%v  payloadType:%v\n", dec.LocalIp, dec.LocalPort, dec.PayloadType)
@@ -203,7 +200,6 @@ func (n *Session) initSession() error {
 	return nil
 }
 
-// ReceiveData for all time you can allow it until stop
 func (n *Session) receiveData(buffer []byte, len int) error {
 	if n.ctx != nil && n.startFlag {
 		n.ctx.rcvDataRtpSession(buffer, len, unsafe.Pointer(n.ctx))
@@ -387,84 +383,4 @@ func (n *Session) NewSsrcStreamOut(own *Address, ssrc uint32, sequenceNo uint16)
 	index = n.streamOutIndex
 	n.streamOutIndex++
 	return index, ""
-}
-
-func (n *Session) GetTimeStamp() uint32 {
-	if n.ctx != nil {
-		return n.ctx.getTimeStamp()
-	} else {
-		return 0
-	}
-}
-
-func (n *Session) GetSequenceNumber() uint16 {
-	if n.ctx != nil {
-		return n.ctx.getSequenceNumber()
-	} else {
-		return 0
-	}
-}
-
-func (n *Session) GetSsrc() uint32 {
-	if n.ctx != nil {
-		return n.ctx.getSsrc()
-	} else {
-		return 0
-	}
-}
-
-func (n *Session) GetCSrc() []uint32 {
-	if n.ctx != nil {
-		return n.ctx.getCSrc()
-	} else {
-		return nil
-	}
-}
-
-func (n *Session) GetPayloadType() uint16 {
-	if n.ctx != nil {
-		return n.ctx.getPayloadType()
-	} else {
-		return 0
-	}
-}
-
-func (n *Session) GetMarker() bool {
-	if n.ctx != nil {
-		return n.ctx.getMarker()
-	} else {
-		return false
-	}
-}
-
-func (n *Session) GetVersion() uint8 {
-	if n.ctx != nil {
-		return n.ctx.getVersion()
-	} else {
-		return 0
-	}
-}
-
-func (n *Session) GetPadding() bool {
-	if n.ctx != nil {
-		return n.ctx.getPadding()
-	} else {
-		return false
-	}
-}
-
-func (n *Session) GetExtension() bool {
-	if n.ctx != nil {
-		return n.ctx.getExtension()
-	} else {
-		return false
-	}
-}
-
-func (n *Session) GetCC() uint8 {
-	if n.ctx != nil {
-		return n.ctx.getCC()
-	} else {
-		return 0
-	}
 }
