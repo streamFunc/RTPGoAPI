@@ -136,10 +136,10 @@ func (n *Session) StartSession() error {
 }
 
 func (n *Session) CloseSession() error {
-	if n.ctx != nil {
+	if n.ctx != nil && n.startFlag {
+		n.startFlag = false
 		res := n.ctx.stopRtpSession()
 		delete(GlobalCRtpSessionMap, n.ctx)
-		n.startFlag = false
 		if res == false {
 			fmt.Printf("StopSession fail,error:%v\n", res)
 			return errors.New(fmt.Sprintf("StopSession fail"))
@@ -217,9 +217,9 @@ func (n *Session) receivePacketLoop() {
 		ticker := time.Tick(time.Millisecond)
 
 		for range ticker {
-			if !n.startFlag {
+			if !n.startFlag || n.ctx == nil {
 				fmt.Printf("stop receivePacket...")
-				break
+				return
 			}
 			n.receiveData(buffer, 1500)
 		}
@@ -235,6 +235,7 @@ func (n *Session) destroy() {
 	if n.ctx != nil {
 		n.ini.destroySessionInitData()
 		n.ctx.destroyRtpSession()
+		n.ctx = nil
 	}
 }
 
