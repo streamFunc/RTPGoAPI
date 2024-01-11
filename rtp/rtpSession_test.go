@@ -40,7 +40,7 @@ func TestRtp(t *testing.T) {
 	var remote, _ = net.ResolveIPAddr("ip", "127.0.0.1")
 
 	tpLocal, _ = NewTransportUDP(local, 11000, "")
-	tpLocal.SetRtpMode(1)
+	//tpLocal.SetRtpMode(1)
 
 	r := NewSession(tpLocal, tpLocal)
 

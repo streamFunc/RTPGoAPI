@@ -19,7 +19,7 @@ type TransportUDP struct {
 
 func NewTransportUDP(addr *net.IPAddr, port int, zone string) (*TransportUDP, error) {
 	tp := new(TransportUDP)
-	tp.mode = 0
+	tp.mode = 1
 	tp.clockRate = 90000
 	tp.payloadType = 123
 	tp.localAddrRtp = &net.UDPAddr{IP: addr.IP, Port: port, Zone: zone}
