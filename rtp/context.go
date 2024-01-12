@@ -119,17 +119,18 @@ func (rtp *CRtpSessionContext) sendDataRtpSession(payload []byte, len, marker in
 	return res
 }
 
+func (rtp *CRtpSessionContext) sendDataWithTsRtpSession(payload []byte, len int, pts uint32, marker int) int {
+	res := int(C.SendDataWithTsRtpSession(rtp, (*C.uint8_t)(unsafe.Pointer(&payload[0])), (C.int)(len), (C.uint32_t)(pts), (C.uint16_t)(marker)))
+	return res
+}
+
 func (rtp *CRtpSessionContext) rcvDataRtpSession(buffer []byte, len int, user unsafe.Pointer) int {
 	return int(C.RcvDataRtpSession(rtp, (*C.uint8_t)(unsafe.Pointer(&buffer[0])), (C.int)(len), C.CRcvCb(C.RcvCb), user))
 }
 
-/*func (rtp *CRtpSessionContext) sendDataWithTsRtpSession(payload []byte, len, pts, marker int) int {
-	return int(C.SendDataWithTsRtpSession(rtp, (*C.uint8_t)(unsafe.Pointer(&payload[0])), (C.int)(len), (C.uint32_t)(pts), (C.uint16_t)(marker)))
+func (rtp *CRtpSessionContext) rcvDataWithTsRtpSession(buffer []byte, len int, pts uint32, rcvCb C.CRcvCb, user unsafe.Pointer) int {
+	return int(C.RcvDataWithTsRtpSession(rtp, (*C.uint8_t)(unsafe.Pointer(&buffer[0])), (C.int)(len), (C.uint32_t)(pts), rcvCb, user))
 }
-
-func (rtp *CRtpSessionContext) rcvDataWithTsRtpSession(buffer []byte, len, ts int, rcvCb C.CRcvCb, user unsafe.Pointer) int {
-	return int(C.RcvDataWithTsRtpSession(rtp, (*C.uint8_t)(unsafe.Pointer(&buffer[0])), (C.int)(len), (C.uint32_t)(ts), rcvCb, user))
-}*/
 
 func (rtp *CRtpSessionContext) getTimeStamp() uint32 {
 	t := C.GetTimeStamp(unsafe.Pointer(rtp))

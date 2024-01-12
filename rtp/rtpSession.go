@@ -85,7 +85,7 @@ func (n *Session) AddRemote(remote *Address) (index uint32, err error) {
 
 func (n *Session) NewDataPacket(stamp uint32) *DataPacket {
 	rp := &DataPacket{
-		pts: stamp,
+		pts: stamp + n.streamsOut[0].initialStamp,
 	}
 	return rp
 }
@@ -166,8 +166,10 @@ func (n *Session) WriteData(rp *DataPacket) (k int, err error) {
 	if n.ctx != nil && n.startFlag {
 		if rp.marker {
 			n.ctx.sendDataRtpSession(rp.payload, len(rp.payload), 1)
+			//n.ctx.sendDataWithTsRtpSession(rp.payload, len(rp.payload), rp.pts, 1)
 		} else {
 			n.ctx.sendDataRtpSession(rp.payload, len(rp.payload), 0)
+			//n.ctx.sendDataWithTsRtpSession(rp.payload, len(rp.payload), rp.pts, 0)
 		}
 
 	} else {
@@ -380,6 +382,7 @@ func (n *Session) NewSsrcStreamOut(own *Address, ssrc uint32, sequenceNo uint16)
 		sequenceNumber: sequenceNo,
 		ssrc:           ssrc,
 	}
+	str.newInitialTimestamp()
 	n.streamsOut[n.streamOutIndex] = str
 	index = n.streamOutIndex
 	n.streamOutIndex++
