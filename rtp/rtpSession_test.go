@@ -96,7 +96,7 @@ func startRtpReceiveLoop(rp *Session) {
 			break
 		}
 		select {
-		case pl, more := <-rp.HandleC:
+		case pl, more := <-rp.dataReceiveChan:
 			if !more {
 				return
 			}

@@ -31,7 +31,7 @@ type Session struct {
 	startFlag                     bool
 	frameBufData                  []byte
 	streamsOut                    streamOutMap
-	HandleC                       chan *DataPacket
+	dataReceiveChan               chan *DataPacket
 	ctrlEventChan                 CtrlEventChan
 	//fp                           *os.File
 	ctx *CRtpSessionContext
@@ -56,7 +56,7 @@ func NewSession(rp *TransportUDP, tv TransportRecv) *Session {
 	}
 	dec.streamsOut = make(streamOutMap, maxNumberOutStreams)
 	dec.ctx = newSessionContext(dec.Mode)
-	dec.HandleC = make(chan *DataPacket, 120)
+	dec.dataReceiveChan = make(chan *DataPacket, dataReceiveChanLen)
 
 	initConfigOnce()
 
@@ -67,7 +67,7 @@ func NewSession(rp *TransportUDP, tv TransportRecv) *Session {
 
 	GlobalCRtpSessionMap[dec.ctx] = &dec
 
-	fmt.Printf("localIp:%v port:%v  payloadType:%v\n", dec.LocalIp, dec.LocalPort, dec.PayloadType)
+	fmt.Printf("session localIp:%v port:%v  payloadType:%v\n", dec.LocalIp, dec.LocalPort, dec.PayloadType)
 
 	return &dec
 }
@@ -91,14 +91,14 @@ func (n *Session) NewDataPacket(stamp uint32) *DataPacket {
 }
 
 func (n *Session) CreateDataReceiveChan() chan *DataPacket {
-	return n.HandleC
+	return n.dataReceiveChan
 }
 
 func (n *Session) RemoveDataReceiveChan() {
-	if n.HandleC != nil {
-		close(n.HandleC)
+	if n.dataReceiveChan != nil {
+		close(n.dataReceiveChan)
 	}
-	n.HandleC = nil
+	n.dataReceiveChan = nil
 }
 
 func (n *Session) CreateCtrlEventChan() CtrlEventChan {
@@ -148,12 +148,16 @@ func (n *Session) CloseSession() error {
 			//n.fp.Close()
 			//n.fp = nil
 			//}
-			fmt.Printf("StopSession success\n")
+			fmt.Printf("StopSession success \n")
 		}
-		if n.HandleC != nil {
+		if n.dataReceiveChan != nil {
 			// notify packet handler
-			close(n.HandleC)
-			n.HandleC = nil
+			close(n.dataReceiveChan)
+			n.dataReceiveChan = nil
+		}
+		if n.ctrlEventChan != nil {
+			close(n.ctrlEventChan)
+			n.ctrlEventChan = nil
 		}
 		n.destroy()
 	} else {
@@ -164,6 +168,7 @@ func (n *Session) CloseSession() error {
 
 func (n *Session) WriteData(rp *DataPacket) (k int, err error) {
 	if n.ctx != nil && n.startFlag {
+		//	fmt.Printf("WriteData len:%v pts:%v marker:%v \n", len(rp.payload), rp.pts, rp.marker)
 		if rp.marker {
 			n.ctx.sendDataRtpSession(rp.payload, len(rp.payload), 1)
 			//n.ctx.sendDataWithTsRtpSession(rp.payload, len(rp.payload), rp.pts, 1)
@@ -220,7 +225,7 @@ func (n *Session) receivePacketLoop() {
 
 		for range ticker {
 			if !n.startFlag || n.ctx == nil {
-				fmt.Printf("stop receivePacket...")
+				fmt.Printf("Session stop receivePacketLoop...\n")
 				return
 			}
 			n.receiveData(buffer, 1500)
@@ -242,7 +247,7 @@ func (n *Session) destroy() {
 }
 
 func (n *Session) receiveRtpCache(pl *DataPacket) {
-	n.HandleC <- pl
+	n.dataReceiveChan <- pl
 }
 
 func (n *Session) unPackRTP2H264(rtpPayload []byte, marker bool) {
@@ -372,7 +377,6 @@ func (n *Session) unPackRTP2H264(rtpPayload []byte, marker bool) {
 	}
 }
 
-// SsrcStreamOutForIndex not support now
 func (n *Session) SsrcStreamOutForIndex(streamIndex uint32) *SsrcStream {
 	return n.streamsOut[streamIndex]
 }
