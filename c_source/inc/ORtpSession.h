@@ -30,6 +30,8 @@ public:
 
 private:
     void __updateRtpHeaderData(mblk_t* mp);
+//    int __rcvDataWithoutJitter(uint8_t *buf, int len,RcvCb rcvCb, void *user);
+//    int __rcvDataWithJitter(uint8_t *buf, int len,RcvCb rcvCb, void *user);
 
 private:
     RtpSession*                 m_pRtpSession;

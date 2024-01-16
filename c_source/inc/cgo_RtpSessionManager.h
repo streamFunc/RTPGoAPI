@@ -16,8 +16,7 @@ typedef struct CRtpSessionManager CRtpSessionManager;
 typedef struct CRtpSessionInitData CRtpSessionInitData;
 
 typedef int (*CRcvCb)(const uint8_t *buf, int len, int marker, void *user);
-
-int RcvCb(uint8_t *buf, int len, int marker, void *user);
+int RcvCb(uint8_t *buf, int len, int marker, void *user); //ensure the same function name when define with go language
 
 typedef enum CRtpSessionType{
     CRtpSessionType_ORTP,
@@ -38,7 +37,6 @@ CRtpSessionInitData*  CreateRtpSessionInitData(const char* localIp,const char* r
                                                ,int remotePort,int payloadType,int clockRate);
 void DestroyRtpSessionInitData(CRtpSessionInitData* pi);
 
-
 //receive rtp header
 uint32_t GetTimeStamp(void* p);
 uint16_t GetSequenceNumber(void* p);
@@ -50,6 +48,17 @@ uint8_t  GetVersion(void* p);
 bool     GetPadding(void* p);
 bool     GetExtension(void* p);
 uint8_t  GetCC(void* p);
+
+
+//rtcp
+//inline uint8_t* GetPacketData(void* rtcpPacket);
+//inline int GetPacketDataLength(void* rtcpPacket);
+//inline uint8_t* GetAppData(void* p);
+//inline int GetAppDataLength(void* rtcpPacket);
+//inline uint8_t* GetAppName(void* rtcpPacket);
+//inline uint32_t GetAppSsrc(void* rtcpPacket);
+//inline uint8_t GetAppSubType(void* rtcpPacket);
+
 
 #ifdef __cplusplus
 }
