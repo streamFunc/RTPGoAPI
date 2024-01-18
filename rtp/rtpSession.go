@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync"
 	"time"
 	"unsafe"
 )
@@ -12,7 +13,7 @@ import (
 var GlobalCRtpSessionMap map[*CRtpSessionContext]*Session
 
 const (
-	dataReceiveChanLen = 3
+	dataReceiveChanLen = 32
 	ctrlEventChanLen   = 3
 )
 
@@ -20,6 +21,8 @@ const (
 	maxNumberOutStreams = 5
 	maxNumberInStreams  = 30
 )
+
+var GlobalCRtpSessionMapMutex sync.Mutex
 
 type Session struct {
 	LocalIp, RemoteIp             string
@@ -30,6 +33,7 @@ type Session struct {
 	profile                       string
 	startFlag                     bool
 	frameBufData                  []byte
+	streamId                      uint32
 	streamsOut                    streamOutMap
 	dataReceiveChan               chan *DataPacket
 	ctrlEventChan                 CtrlEventChan
@@ -45,6 +49,8 @@ type Address struct {
 }
 
 func NewSession(rp *TransportUDP, tv TransportRecv) *Session {
+	initConfigOnce()
+
 	dec := Session{
 		startFlag:      false,
 		LocalIp:        rp.localAddrRtp.IP.String(),
@@ -58,14 +64,14 @@ func NewSession(rp *TransportUDP, tv TransportRecv) *Session {
 	dec.ctx = newSessionContext(dec.Mode)
 	dec.dataReceiveChan = make(chan *DataPacket, dataReceiveChanLen)
 
-	initConfigOnce()
-
 	if dec.ctx == nil {
 		fmt.Printf("NewRtpSession error creat dec.ctx or dec.ini fail\n")
 		return nil
 	}
 
+	GlobalCRtpSessionMapMutex.Lock()
 	GlobalCRtpSessionMap[dec.ctx] = &dec
+	GlobalCRtpSessionMapMutex.Unlock()
 
 	fmt.Printf("session localIp:%v port:%v  payloadType:%v\n", dec.LocalIp, dec.LocalPort, dec.PayloadType)
 
@@ -117,7 +123,9 @@ func (n *Session) StartSession() error {
 		//if n.fp == nil {
 		//	fmt.Printf("error creat myReceived.264")
 		//}
-		n.initSession()
+		if n.initSession() != nil {
+			return errors.New(fmt.Sprintf("StartSession fail,initSession error..."))
+		}
 
 		res := n.ctx.startRtpSession()
 		n.startFlag = true
@@ -125,7 +133,7 @@ func (n *Session) StartSession() error {
 			fmt.Printf("StartSession fail,error:%v", res)
 			return errors.New(fmt.Sprintf("StartSession  fail"))
 		} else {
-			fmt.Printf("StartSession success\n")
+			fmt.Printf("StartSession success streamId:%v\n", n.streamId)
 			go n.receivePacketLoop()
 		}
 	} else {
@@ -139,7 +147,9 @@ func (n *Session) CloseSession() error {
 	if n.ctx != nil && n.startFlag {
 		n.startFlag = false
 		res := n.ctx.stopRtpSession()
+		GlobalCRtpSessionMapMutex.Lock()
 		delete(GlobalCRtpSessionMap, n.ctx)
+		GlobalCRtpSessionMapMutex.Unlock()
 		if res == false {
 			fmt.Printf("StopSession fail,error:%v\n", res)
 			return errors.New(fmt.Sprintf("StopSession fail"))
@@ -148,7 +158,7 @@ func (n *Session) CloseSession() error {
 			//n.fp.Close()
 			//n.fp = nil
 			//}
-			fmt.Printf("StopSession success \n")
+			fmt.Printf("StopSession success streamId:%v\n", n.streamId)
 		}
 		if n.dataReceiveChan != nil {
 			// notify packet handler
@@ -189,7 +199,7 @@ func (n *Session) initSession() error {
 			n.ClockRate = n.streamsOut[0].profile.ClockRate
 			n.PayloadType = int(n.streamsOut[0].payloadTypeNumber)
 			n.profile = n.streamsOut[0].profile.ProfileName
-			fmt.Printf("InitSession ClockRate:%v  PayloadType:%v type:%v\n",
+			fmt.Printf("InitSession id:%v ClockRate:%v  PayloadType:%v type:%v\n", n.streamsOut[0].initialStamp,
 				n.streamsOut[0].profile.ClockRate, n.streamsOut[0].payloadTypeNumber, n.streamsOut[0].profile.MimeType)
 		}
 
@@ -198,8 +208,6 @@ func (n *Session) initSession() error {
 		if res == false {
 			fmt.Printf("InitSession fail\n")
 			return errors.New(fmt.Sprintf("InitSession  fail"))
-		} else {
-			fmt.Printf("InitSession success\n")
 		}
 	} else {
 		return errors.New(fmt.Sprintf("ctx nil InitSession  fail"))
@@ -247,7 +255,9 @@ func (n *Session) destroy() {
 }
 
 func (n *Session) receiveRtpCache(pl *DataPacket) {
-	n.dataReceiveChan <- pl
+	if n.dataReceiveChan != nil && n.startFlag {
+		n.dataReceiveChan <- pl
+	}
 }
 
 func (n *Session) unPackRTP2H264(rtpPayload []byte, marker bool) {
@@ -387,6 +397,7 @@ func (n *Session) NewSsrcStreamOut(own *Address, ssrc uint32, sequenceNo uint16)
 		ssrc:           ssrc,
 	}
 	str.newInitialTimestamp()
+	n.streamId = str.initialStamp
 	n.streamsOut[n.streamOutIndex] = str
 	index = n.streamOutIndex
 	n.streamOutIndex++

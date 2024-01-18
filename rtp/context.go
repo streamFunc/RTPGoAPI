@@ -13,7 +13,6 @@ import "C"
 //#include "cgo_RtpSessionManager.h"
 import "C"
 import (
-	"fmt"
 	"unsafe"
 )
 
@@ -30,7 +29,10 @@ func RcvCb(buf *C.uint8_t, len C.int, marker C.int, user unsafe.Pointer) C.int {
 
 	slice := make([]byte, length)
 	copy(slice, data)
+
+	GlobalCRtpSessionMapMutex.Lock()
 	nUser := GlobalCRtpSessionMap[handle]
+	GlobalCRtpSessionMapMutex.Unlock()
 
 	// Parse RTP payload
 	payload := parseRtpPayload(slice)
@@ -83,71 +85,108 @@ func parseRtpPayload(buf []byte) []byte {
 }
 
 func (init *CRtpSessionInitData) destroySessionInitData() {
+	if init == nil {
+		return
+	}
 	C.DestroyRtpSessionInitData(init)
 }
 
 func newSessionContext(mode int) *CRtpSessionContext {
 	var t C.CRtpSessionType
 	if mode == 0 {
-		fmt.Printf("is ortp\n")
 		t = C.CRtpSessionType_ORTP
 	} else {
-		fmt.Printf("is jrtp\n")
 		t = C.CRtpSessionType_JRTP
 	}
 	return (*CRtpSessionContext)(C.CreateRtpSession(t))
 }
 
 func (rtp *CRtpSessionContext) destroyRtpSession() {
+	if rtp == nil {
+		return
+	}
 	C.DestroyRtpSession(rtp)
 }
 
 func (rtp *CRtpSessionContext) initRtpSession(v *CRtpSessionInitData) bool {
+	if rtp == nil {
+		return false
+	}
 	return bool(C.InitRtpSession(rtp, v))
 }
 
 func (rtp *CRtpSessionContext) startRtpSession() bool {
+	if rtp == nil {
+		return false
+	}
 	return bool(C.StartRtpSession(rtp))
 }
 
 func (rtp *CRtpSessionContext) stopRtpSession() bool {
+	if rtp == nil {
+		return false
+	}
 	return bool(C.StopRtpSession(rtp))
 }
 
 func (rtp *CRtpSessionContext) sendDataRtpSession(payload []byte, len, marker int) int {
+	if rtp == nil {
+		return -1
+	}
 	res := int(C.SendDataRtpSession(rtp, (*C.uint8_t)(unsafe.Pointer(&payload[0])), (C.int)(len), (C.uint16_t)(marker)))
 	return res
 }
 
 func (rtp *CRtpSessionContext) sendDataWithTsRtpSession(payload []byte, len int, pts uint32, marker int) int {
+	if rtp == nil {
+		return -1
+	}
 	res := int(C.SendDataWithTsRtpSession(rtp, (*C.uint8_t)(unsafe.Pointer(&payload[0])), (C.int)(len), (C.uint32_t)(pts), (C.uint16_t)(marker)))
 	return res
 }
 
 func (rtp *CRtpSessionContext) rcvDataRtpSession(buffer []byte, len int, user unsafe.Pointer) int {
+	if rtp == nil {
+		return -1
+	}
 	return int(C.RcvDataRtpSession(rtp, (*C.uint8_t)(unsafe.Pointer(&buffer[0])), (C.int)(len), C.CRcvCb(C.RcvCb), user))
 }
 
 func (rtp *CRtpSessionContext) rcvDataWithTsRtpSession(buffer []byte, len int, pts uint32, rcvCb C.CRcvCb, user unsafe.Pointer) int {
+	if rtp == nil {
+		return -1
+	}
 	return int(C.RcvDataWithTsRtpSession(rtp, (*C.uint8_t)(unsafe.Pointer(&buffer[0])), (C.int)(len), (C.uint32_t)(pts), rcvCb, user))
 }
 
 func (rtp *CRtpSessionContext) getTimeStamp() uint32 {
+	if rtp == nil {
+		return 0
+	}
 	t := C.GetTimeStamp(unsafe.Pointer(rtp))
 	return uint32(t)
 }
 
 func (rtp *CRtpSessionContext) getSequenceNumber() uint16 {
+	if rtp == nil {
+		return 0
+	}
 	t := C.GetSequenceNumber(unsafe.Pointer(rtp))
 	return uint16(t)
 }
 
 func (rtp *CRtpSessionContext) getSsrc() uint32 {
+	if rtp == nil {
+		return 0
+	}
 	t := C.GetSsrc(unsafe.Pointer(rtp))
 	return uint32(t)
 }
 
 func (rtp *CRtpSessionContext) getCSrc() []uint32 {
+	if rtp == nil {
+		return nil
+	}
 	t := C.GetCsrc(unsafe.Pointer(rtp))
 	dataLen := 16
 	csSrc := (*[1 << 30]C.uint32_t)(unsafe.Pointer(t))[:dataLen:dataLen] // 使用切片将指针转换为Go的uint32切片
@@ -155,31 +194,49 @@ func (rtp *CRtpSessionContext) getCSrc() []uint32 {
 }
 
 func (rtp *CRtpSessionContext) getPayloadType() uint16 {
+	if rtp == nil {
+		return 0
+	}
 	t := C.GetPayloadType(unsafe.Pointer(rtp))
 	return uint16(t)
 }
 
 func (rtp *CRtpSessionContext) getMarker() bool {
+	if rtp == nil {
+		return false
+	}
 	t := C.GetMarker(unsafe.Pointer(rtp))
 	return bool(t)
 }
 
 func (rtp *CRtpSessionContext) getVersion() uint8 {
+	if rtp == nil {
+		return 0
+	}
 	t := C.GetVersion(unsafe.Pointer(rtp))
 	return uint8(t)
 }
 
 func (rtp *CRtpSessionContext) getPadding() bool {
+	if rtp == nil {
+		return false
+	}
 	t := C.GetPadding(unsafe.Pointer(rtp))
 	return bool(t)
 }
 
 func (rtp *CRtpSessionContext) getExtension() bool {
+	if rtp == nil {
+		return false
+	}
 	t := C.GetExtension(unsafe.Pointer(rtp))
 	return bool(t)
 }
 
 func (rtp *CRtpSessionContext) getCC() uint8 {
+	if rtp == nil {
+		return 0
+	}
 	t := C.GetCC(unsafe.Pointer(rtp))
 	return uint8(t)
 }

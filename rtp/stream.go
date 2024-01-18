@@ -1,6 +1,8 @@
 package rtp
 
-import "crypto/rand"
+import (
+	"crypto/rand"
+)
 
 type SsrcStream struct {
 	sequenceNumber    uint16
