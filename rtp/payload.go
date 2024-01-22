@@ -147,6 +147,7 @@ func initPayLoad() {
 		{255, Audio, 24400, 1, "EVS", ""},
 		{255, Audio, 16000, 1, "TELEPHONE-EVENT", ""},
 		{255, Video, 90000, 0, "H264", ""},
+		{255, Video, 90000, 0, "H265", ""},
 	}
 
 	for _, profile := range profiles {

@@ -242,7 +242,7 @@ func (n *Session) receivePacketLoop() {
 }
 
 func (n *Session) HandleCallBackData(data []byte, marker bool) {
-	n.unPackRTP2H264(data, marker)
+	n.unPackRTPToH264(data, marker)
 
 }
 
@@ -260,7 +260,43 @@ func (n *Session) receiveRtpCache(pl *DataPacket) {
 	}
 }
 
-func (n *Session) unPackRTP2H264(rtpPayload []byte, marker bool) {
+func (n *Session) SsrcStreamOutForIndex(streamIndex uint32) *SsrcStream {
+	return n.streamsOut[streamIndex]
+}
+
+func (n *Session) NewSsrcStreamOut(own *Address, ssrc uint32, sequenceNo uint16) (index uint32, err Error) {
+	str := &SsrcStream{
+		sequenceNumber: sequenceNo,
+		ssrc:           ssrc,
+	}
+	str.newInitialTimestamp()
+	n.streamId = str.initialStamp
+	n.streamsOut[n.streamOutIndex] = str
+	index = n.streamOutIndex
+	n.streamOutIndex++
+	return index, ""
+}
+
+func (n *Session) PacketH264ToRtpAndSend(annexbPayload []byte, pts uint32, payloadType uint8) {
+	packetList := CPacketListFromH264Mode(annexbPayload, pts, payloadType, 1200, false)
+
+	packetList.Iterate(func(p *CRtpPacketList) {
+		payload, pt, pts1, mark := p.Payload, p.PayloadType, p.Pts, p.Marker
+		if payload != nil {
+			packet := n.NewDataPacket(pts1)
+			packet.SetMarker(mark)
+			packet.SetPayload(payload)
+			packet.SetPayloadType(pt)
+
+			if _, err := n.WriteData(packet); err != nil {
+				fmt.Printf(" PacketH264ToRtpAndSend WriteData fail...\n")
+			}
+
+		}
+	})
+}
+
+func (n *Session) unPackRTPToH264(rtpPayload []byte, marker bool) {
 	fuIndicator := rtpPayload[0]                       //获取第一个字节 分片单元指识
 	fuHeader := rtpPayload[1]                          //获取第二个字节 分片单元头
 	naluType := fuIndicator & 0x1f                     //获取FU indicator的类型域
@@ -385,21 +421,4 @@ func (n *Session) unPackRTP2H264(rtpPayload []byte, marker bool) {
 		}
 
 	}
-}
-
-func (n *Session) SsrcStreamOutForIndex(streamIndex uint32) *SsrcStream {
-	return n.streamsOut[streamIndex]
-}
-
-func (n *Session) NewSsrcStreamOut(own *Address, ssrc uint32, sequenceNo uint16) (index uint32, err Error) {
-	str := &SsrcStream{
-		sequenceNumber: sequenceNo,
-		ssrc:           ssrc,
-	}
-	str.newInitialTimestamp()
-	n.streamId = str.initialStamp
-	n.streamsOut[n.streamOutIndex] = str
-	index = n.streamOutIndex
-	n.streamOutIndex++
-	return index, ""
 }
