@@ -17,14 +17,14 @@ import (
 )
 
 //export RcvCb
-func RcvCb(buf *C.uint8_t, len C.int, marker C.int, user unsafe.Pointer) C.int {
+func RcvCb(buf *C.uint8_t, dataLen C.int, marker C.int, user unsafe.Pointer) C.int {
 	if user == nil && marker == 1 || buf == nil {
 		return -1
 	}
 	//fmt.Println("Receive payload len=", len, "seq=", C.GetSequenceNumber(user), " from ssrc=", C.GetSsrc(user), " marker=", marker, " user=", user, " pt=", C.GetPayloadType(user))
 
 	handle := (*CRtpSessionContext)(user)
-	length := int(len)
+	length := int(dataLen)
 	data := (*[1 << 30]byte)(unsafe.Pointer(buf))[:length:length]
 
 	slice := make([]byte, length)
@@ -58,7 +58,7 @@ func RcvCb(buf *C.uint8_t, len C.int, marker C.int, user unsafe.Pointer) C.int {
 	//nUser.HandleCallBackData(payload, flag)
 	nUser.receiveRtpCache(rp)
 
-	return len
+	return dataLen
 
 }
 
