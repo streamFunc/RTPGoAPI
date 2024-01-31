@@ -14,10 +14,7 @@ class ORtpSession :public RtpSessionMpl{
 public:
     ORtpSession();
     virtual ~ORtpSession();
-
     virtual bool Init(const RtpSessionInitData* pInitData);
-    virtual bool Start();
-    virtual bool Stop();
 
     virtual int SendData(const uint8_t *buf, int len, uint16_t marker);
     virtual int SendDataWithTs(const uint8_t *buf, int len, uint32_t pts, uint16_t marker);
@@ -27,6 +24,10 @@ public:
 
     static void StaticInit();
     static void StaticUnInit();
+
+protected:
+    virtual void loop();
+    virtual bool stop();
 
 private:
     void __updateRtpHeaderData(mblk_t* mp);

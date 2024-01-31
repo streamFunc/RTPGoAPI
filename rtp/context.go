@@ -13,6 +13,7 @@ import "C"
 //#include "cgo_RtpSessionManager.h"
 import "C"
 import (
+	"fmt"
 	"unsafe"
 )
 
@@ -29,10 +30,6 @@ func RcvCb(buf *C.uint8_t, dataLen C.int, marker C.int, user unsafe.Pointer) C.i
 
 	slice := make([]byte, length)
 	copy(slice, data)
-
-	GlobalCRtpSessionMapMutex.Lock()
-	nUser := GlobalCRtpSessionMap[handle]
-	GlobalCRtpSessionMapMutex.Unlock()
 
 	// Parse RTP payload
 	payload := parseRtpPayload(slice)
@@ -55,11 +52,178 @@ func RcvCb(buf *C.uint8_t, dataLen C.int, marker C.int, user unsafe.Pointer) C.i
 		seq:         handle.getSequenceNumber(),
 	}
 
+	GlobalCRtpSessionMapMutex.Lock()
+	nUser, found := GlobalCRtpSessionMap[handle]
+	GlobalCRtpSessionMapMutex.Unlock()
+
 	//nUser.HandleCallBackData(payload, flag)
-	nUser.receiveRtpCache(rp)
+	if found {
+		nUser.receiveRtpCache(rp)
+	} else {
+		fmt.Printf("not found user,had destory\n")
+	}
 
 	return dataLen
 
+}
+
+//export RtcpAppPacketRcvCb
+func RtcpAppPacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
+	if user == nil {
+		return
+	}
+	handle := (*CRtpSessionContext)(user)
+
+	fmt.Println("Receive rtcp AppData name=", handle.GetAppName(rtcpPacket), "subType=", C.GetAppSubType(user, rtcpPacket))
+
+	rp := &CtrlEvent{
+		EventType: RtcpApp,
+	}
+
+	GlobalCRtpSessionMapMutex.Lock()
+	nUser, found := GlobalCRtpSessionMap[handle]
+	GlobalCRtpSessionMapMutex.Unlock()
+
+	if found {
+		nUser.receiveRtcpCache(rp)
+	}
+
+}
+
+//export RtcpRRPacketRcvCb
+func RtcpRRPacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
+	if user == nil {
+		return
+	}
+	handle := (*CRtpSessionContext)(user)
+	fmt.Println("Receive rtcp RR lost packet=", handle.GetRRLostPacketNumber(rtcpPacket), "jitter=", handle.GetRRJitter(rtcpPacket))
+
+	/*packetLen := 88
+	// 将 rtcpPacket 转换为 []byte 切片
+	rtcpData := make([]byte, packetLen)
+	rtcpDataPtr := uintptr(rtcpPacket)
+	for i := 0; i < packetLen; i++ {
+		rtcpData[i] = *(*byte)(unsafe.Pointer(rtcpDataPtr + uintptr(i)))
+	}*/
+
+	rp := &CtrlEvent{
+		EventType: RtcpRR,
+		//buffer:    rtcpData,
+	}
+
+	GlobalCRtpSessionMapMutex.Lock()
+	nUser, found := GlobalCRtpSessionMap[handle]
+	GlobalCRtpSessionMapMutex.Unlock()
+
+	if found {
+		nUser.receiveRtcpCache(rp)
+	}
+}
+
+//export RtcpSRPacketRcvCb
+func RtcpSRPacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
+	if user == nil {
+		return
+	}
+	handle := (*CRtpSessionContext)(user)
+	fmt.Println("Receive rtcp SR sender packet count=", handle.GetSRSenderPacketCount(rtcpPacket))
+
+	rp := &CtrlEvent{
+		EventType: RtcpSR,
+	}
+
+	GlobalCRtpSessionMapMutex.Lock()
+	nUser, found := GlobalCRtpSessionMap[handle]
+	GlobalCRtpSessionMapMutex.Unlock()
+
+	if found {
+		nUser.receiveRtcpCache(rp)
+	}
+}
+
+//export RtcpSdesItemRcvCb
+func RtcpSdesItemRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
+	if user == nil {
+		return
+	}
+	handle := (*CRtpSessionContext)(user)
+	fmt.Println("Receive rtcp sdes item packet len=", handle.GetSdesItemDataLen(rtcpPacket), "type=", handle.GetSdesItemType(rtcpPacket))
+
+	rp := &CtrlEvent{
+		EventType: RtcpSdes,
+	}
+
+	GlobalCRtpSessionMapMutex.Lock()
+	nUser, found := GlobalCRtpSessionMap[handle]
+	GlobalCRtpSessionMapMutex.Unlock()
+
+	if found {
+		nUser.receiveRtcpCache(rp)
+	}
+
+}
+
+//export RtcpSdesPrivateItemRcvCb
+func RtcpSdesPrivateItemRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
+	if user == nil {
+		return
+	}
+	handle := (*CRtpSessionContext)(user)
+	fmt.Println("Receive rtcp SdesPrivateItem packet len=", handle.GetSdesPrivateValueDataLen(rtcpPacket))
+
+	rp := &CtrlEvent{
+		EventType: RtcpSdes,
+	}
+
+	GlobalCRtpSessionMapMutex.Lock()
+	nUser, found := GlobalCRtpSessionMap[handle]
+	GlobalCRtpSessionMapMutex.Unlock()
+
+	if found {
+		nUser.receiveRtcpCache(rp)
+	}
+}
+
+//export RtcpByePacketRcvCb
+func RtcpByePacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
+	if user == nil {
+		return
+	}
+	handle := (*CRtpSessionContext)(user)
+	fmt.Println("Receive rtcp bye reason len=", handle.GetByeReasonDataLen(rtcpPacket))
+
+	rp := &CtrlEvent{
+		EventType: RtcpBye,
+	}
+
+	GlobalCRtpSessionMapMutex.Lock()
+	nUser, found := GlobalCRtpSessionMap[handle]
+	GlobalCRtpSessionMapMutex.Unlock()
+
+	if found {
+		nUser.receiveRtcpCache(rp)
+	}
+}
+
+//export RtcpUnKnownPacketRcvCb
+func RtcpUnKnownPacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
+	if user == nil {
+		return
+	}
+	handle := (*CRtpSessionContext)(user)
+	fmt.Println("Receive rtcp unKnow  len=", handle.GetUnKnownRtcpPacketDataLen(rtcpPacket))
+
+	rp := &CtrlEvent{
+		EventType: unKnown,
+	}
+
+	GlobalCRtpSessionMapMutex.Lock()
+	nUser, found := GlobalCRtpSessionMap[handle]
+	GlobalCRtpSessionMapMutex.Unlock()
+
+	if found {
+		nUser.receiveRtcpCache(rp)
+	}
 }
 
 type (
@@ -239,4 +403,286 @@ func (rtp *CRtpSessionContext) getCC() uint8 {
 	}
 	t := C.GetCC(unsafe.Pointer(rtp))
 	return uint8(t)
+}
+
+// rtcp register
+
+func (rtp *CRtpSessionContext) RegisterAppPacketRcvCb(user unsafe.Pointer) bool {
+	return bool(C.RegisterAppPacketRcvCb(rtp, unsafe.Pointer(C.CRtcpRcvCb(C.RtcpAppPacketRcvCb)), user))
+}
+
+func (rtp *CRtpSessionContext) RegisterRRPacketRcvCb(user unsafe.Pointer) bool {
+	return bool(C.RegisterRRPacketRcvCb(rtp, unsafe.Pointer(C.CRtcpRcvCb(C.RtcpRRPacketRcvCb)), user))
+}
+
+func (rtp *CRtpSessionContext) RegisterSRPacketRcvCb(user unsafe.Pointer) bool {
+	return bool(C.RegisterSRPacketRcvCb(rtp, unsafe.Pointer(C.CRtcpRcvCb(C.RtcpSRPacketRcvCb)), user))
+}
+
+func (rtp *CRtpSessionContext) RegisterSdesItemRcvCb(user unsafe.Pointer) bool {
+	return bool(C.RegisterSdesItemRcvCb(rtp, unsafe.Pointer(C.CRtcpRcvCb(C.RtcpSdesItemRcvCb)), user))
+}
+
+func (rtp *CRtpSessionContext) RegisterSdesPrivateItemRcvCb(user unsafe.Pointer) bool {
+	return bool(C.RegisterSdesPrivateItemRcvCb(rtp, unsafe.Pointer(C.CRtcpRcvCb(C.RtcpSdesPrivateItemRcvCb)), user))
+}
+
+func (rtp *CRtpSessionContext) RegisterByePacketRcvCb(user unsafe.Pointer) bool {
+	return bool(C.RegisterByePacketRcvCb(rtp, unsafe.Pointer(C.CRtcpRcvCb(C.RtcpByePacketRcvCb)), user))
+}
+
+func (rtp *CRtpSessionContext) RegisterUnKnownPacketRcvCb(user unsafe.Pointer) bool {
+	return bool(C.RegisterUnKnownPacketRcvCb(rtp, unsafe.Pointer(C.CRtcpRcvCb(C.RtcpUnKnownPacketRcvCb)), user))
+}
+
+//  rtcp app packet
+
+func (rtp *CRtpSessionContext) GetAppData(rtcpPacket unsafe.Pointer) []uint8 {
+	if rtp == nil {
+		return nil
+	}
+	cData := C.GetAppData(unsafe.Pointer(rtp), rtcpPacket)
+	defer C.free(unsafe.Pointer(cData))
+
+	dataLen := rtp.GetAppDataLength(rtcpPacket)
+	return C.GoBytes(unsafe.Pointer(cData), C.int(dataLen))
+
+}
+
+func (rtp *CRtpSessionContext) GetAppDataLength(rtcpPacket unsafe.Pointer) int {
+	if rtp == nil {
+		return -1
+	}
+	return int(C.GetAppDataLength(unsafe.Pointer(rtp), rtcpPacket))
+}
+
+func (rtp *CRtpSessionContext) GetAppName(rtcpPacket unsafe.Pointer) []uint8 {
+	if rtp == nil {
+		return nil
+	}
+	cData := C.GetAppName(unsafe.Pointer(rtp), rtcpPacket)
+	defer C.free(unsafe.Pointer(cData))
+
+	dataLen := rtp.GetAppDataLength(rtcpPacket)
+	return C.GoBytes(unsafe.Pointer(cData), C.int(dataLen))
+
+}
+
+func (rtp *CRtpSessionContext) GetAppSsrc(rtcpPacket unsafe.Pointer) uint32 {
+	if rtp == nil {
+		return 0
+	}
+	return uint32(C.GetAppSsrc(unsafe.Pointer(rtp), rtcpPacket))
+}
+
+func (rtp *CRtpSessionContext) GetAppSubType(rtcpPacket unsafe.Pointer) uint8 {
+	if rtp == nil {
+		return 0
+	}
+	return uint8(C.GetAppSubType(unsafe.Pointer(rtp), rtcpPacket))
+}
+
+//rtcp sdes item
+
+func (rtp *CRtpSessionContext) GetSdesItemData(rtcpPacket unsafe.Pointer) []uint8 {
+	if rtp == nil {
+		return nil
+	}
+	cData := C.GetSdesItemData(unsafe.Pointer(rtp), rtcpPacket)
+	defer C.free(unsafe.Pointer(cData))
+
+	dataLen := rtp.GetSdesItemDataLen(rtcpPacket)
+	return C.GoBytes(unsafe.Pointer(cData), C.int(dataLen))
+}
+
+func (rtp *CRtpSessionContext) GetSdesItemDataLen(rtcpPacket unsafe.Pointer) int {
+	if rtp == nil {
+		return -1
+	}
+	return int(C.GetSdesItemDataLen(unsafe.Pointer(rtp), rtcpPacket))
+}
+
+func (rtp *CRtpSessionContext) GetSdesItemType(rtcpPacket unsafe.Pointer) int {
+	if rtp == nil {
+		return -1
+	}
+	return int(C.GetSdesItemType(unsafe.Pointer(rtp), rtcpPacket))
+}
+
+// rtcp sdes private item
+
+func (rtp *CRtpSessionContext) GetSdesPrivatePrefixData(rtcpPacket unsafe.Pointer) []uint8 {
+	if rtp == nil {
+		return nil
+	}
+	cData := C.GetSdesPrivatePrefixData(unsafe.Pointer(rtp), rtcpPacket)
+	defer C.free(unsafe.Pointer(cData))
+
+	dataLen := rtp.GetSdesPrivatePrefixDataLen(rtcpPacket)
+	return C.GoBytes(unsafe.Pointer(cData), C.int(dataLen))
+}
+
+func (rtp *CRtpSessionContext) GetSdesPrivatePrefixDataLen(rtcpPacket unsafe.Pointer) int {
+	if rtp == nil {
+		return -1
+	}
+	return int(C.GetSdesPrivatePrefixDataLen(unsafe.Pointer(rtp), rtcpPacket))
+}
+
+func (rtp *CRtpSessionContext) GetSdesPrivateValueData(rtcpPacket unsafe.Pointer) []uint8 {
+	if rtp == nil {
+		return nil
+	}
+	cData := C.GetSdesPrivateValueData(unsafe.Pointer(rtp), rtcpPacket)
+	defer C.free(unsafe.Pointer(cData))
+
+	dataLen := rtp.GetSdesPrivateValueDataLen(rtcpPacket)
+	return C.GoBytes(unsafe.Pointer(cData), C.int(dataLen))
+
+}
+
+func (rtp *CRtpSessionContext) GetSdesPrivateValueDataLen(rtcpPacket unsafe.Pointer) int {
+	if rtp == nil {
+		return -1
+	}
+	return int(C.GetSdesPrivateValueDataLen(unsafe.Pointer(rtp), rtcpPacket))
+}
+
+// rtcp unKnown packet
+
+func (rtp *CRtpSessionContext) GetUnknownPacketType(rtcpPacket unsafe.Pointer) uint8 {
+	if rtp == nil {
+		return 0
+	}
+	return uint8(C.GetUnknownPacketType(unsafe.Pointer(rtp), rtcpPacket))
+}
+
+func (rtp *CRtpSessionContext) GetUnKnownRtcpPacketData(rtcpPacket unsafe.Pointer) []uint8 {
+	if rtp == nil {
+		return nil
+	}
+	cData := C.GetUnKnownRtcpPacketData(unsafe.Pointer(rtp), rtcpPacket)
+	defer C.free(unsafe.Pointer(cData))
+
+	dataLen := rtp.GetUnKnownRtcpPacketDataLen(rtcpPacket)
+	return C.GoBytes(unsafe.Pointer(cData), C.int(dataLen))
+
+}
+
+func (rtp *CRtpSessionContext) GetUnKnownRtcpPacketDataLen(rtcpPacket unsafe.Pointer) int {
+	if rtp == nil {
+		return -1
+	}
+	return int(C.GetUnKnownRtcpPacketDataLen(unsafe.Pointer(rtp), rtcpPacket))
+}
+
+func (rtp *CRtpSessionContext) GetUnKnownRtcpPacketSsrc(rtcpPacket unsafe.Pointer) uint32 {
+	if rtp == nil {
+		return 0
+	}
+	return uint32(C.GetUnKnownRtcpPacketSsrc(unsafe.Pointer(rtp), rtcpPacket))
+}
+
+//rtcp RR or SR Packet
+
+func (rtp *CRtpSessionContext) GetRRFractionLost(rtcpPacket unsafe.Pointer) uint8 {
+	if rtp == nil {
+		return 0
+	}
+	return uint8(C.GetRRFractionLost(unsafe.Pointer(rtp), rtcpPacket))
+}
+
+func (rtp *CRtpSessionContext) GetRRLostPacketNumber(rtcpPacket unsafe.Pointer) uint32 {
+	if rtp == nil {
+		return 0
+	}
+	return uint32(C.GetRRLostPacketNumber(unsafe.Pointer(rtp), rtcpPacket))
+}
+
+func (rtp *CRtpSessionContext) GetRRExtendedHighestSequenceNumber(rtcpPacket unsafe.Pointer) uint32 {
+	if rtp == nil {
+		return 0
+	}
+	return uint32(C.GetRRExtendedHighestSequenceNumber(unsafe.Pointer(rtp), rtcpPacket))
+}
+
+func (rtp *CRtpSessionContext) GetRRJitter(rtcpPacket unsafe.Pointer) uint32 {
+	if rtp == nil {
+		return 0
+	}
+	return uint32(C.GetRRJitter(unsafe.Pointer(rtp), rtcpPacket))
+}
+
+func (rtp *CRtpSessionContext) GetRRLastSR(rtcpPacket unsafe.Pointer) uint32 {
+	if rtp == nil {
+		return 0
+	}
+	return uint32(C.GetRRLastSR(unsafe.Pointer(rtp), rtcpPacket))
+}
+
+func (rtp *CRtpSessionContext) GetRRDelaySinceLastSR(rtcpPacket unsafe.Pointer) uint32 {
+	if rtp == nil {
+		return 0
+	}
+	return uint32(C.GetRRDelaySinceLastSR(unsafe.Pointer(rtp), rtcpPacket))
+}
+
+// rtcp SR report packet
+
+func (rtp *CRtpSessionContext) GetSRNtpLSWTimeStamp(rtcpPacket unsafe.Pointer) uint32 {
+	if rtp == nil {
+		return 0
+	}
+	return uint32(C.GetSRNtpLSWTimeStamp(unsafe.Pointer(rtp), rtcpPacket))
+}
+
+func (rtp *CRtpSessionContext) GetSRNtpMSWTimeStamp(rtcpPacket unsafe.Pointer) uint32 {
+	if rtp == nil {
+		return 0
+	}
+	return uint32(C.GetSRNtpMSWTimeStamp(unsafe.Pointer(rtp), rtcpPacket))
+}
+
+func (rtp *CRtpSessionContext) GetSRRtpTimeStamp(rtcpPacket unsafe.Pointer) uint32 {
+	if rtp == nil {
+		return 0
+	}
+	return uint32(C.GetSRRtpTimeStamp(unsafe.Pointer(rtp), rtcpPacket))
+}
+
+func (rtp *CRtpSessionContext) GetSRSenderPacketCount(rtcpPacket unsafe.Pointer) uint32 {
+	if rtp == nil {
+		return 0
+	}
+	return uint32(C.GetSRSenderPacketCount(unsafe.Pointer(rtp), rtcpPacket))
+}
+
+func (rtp *CRtpSessionContext) GetSRSenderOctetCount(rtcpPacket unsafe.Pointer) uint32 {
+	if rtp == nil {
+		return 0
+	}
+	return uint32(C.GetSRSenderOctetCount(unsafe.Pointer(rtp), rtcpPacket))
+}
+
+//rtcp bye packet
+
+func (rtp *CRtpSessionContext) GetByeReasonData(rtcpPacket unsafe.Pointer) []uint8 {
+	if rtp == nil {
+		return nil
+	}
+
+	cData := C.GetByeReasonData(unsafe.Pointer(rtp), rtcpPacket)
+	defer C.free(unsafe.Pointer(cData))
+
+	// 转换 C 字节切片为 Go 的字节切片
+	dataLen := rtp.GetByeReasonDataLen(rtcpPacket)
+	return C.GoBytes(unsafe.Pointer(cData), C.int(dataLen))
+
+}
+
+func (rtp *CRtpSessionContext) GetByeReasonDataLen(rtcpPacket unsafe.Pointer) int {
+	if rtp == nil {
+		return -1
+	}
+	return int(C.GetByeReasonDataLen(unsafe.Pointer(rtp), rtcpPacket))
 }

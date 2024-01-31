@@ -37,6 +37,7 @@ type Session struct {
 	streamId                      uint32
 	streamsOut                    streamOutMap
 	dataReceiveChan               chan *DataPacket
+	ctrlEvArr                     []*CtrlEvent
 	ctrlEventChan                 CtrlEventChan
 	//fp                            *os.File
 	//fpAudio                       *os.File
@@ -65,6 +66,8 @@ func NewSession(rp *TransportUDP, tv TransportRecv) *Session {
 	dec.streamsOut = make(streamOutMap, maxNumberOutStreams)
 	dec.ctx = newSessionContext(dec.Mode)
 	dec.dataReceiveChan = make(chan *DataPacket, dataReceiveChanLen)
+	dec.ctrlEventChan = make(CtrlEventChan, ctrlEventChanLen)
+	dec.ctrlEvArr = make([]*CtrlEvent, 0, 10)
 
 	if dec.ctx == nil {
 		fmt.Printf("NewRtpSession error creat dec.ctx or dec.ini fail\n")
@@ -110,7 +113,6 @@ func (n *Session) RemoveDataReceiveChan() {
 }
 
 func (n *Session) CreateCtrlEventChan() CtrlEventChan {
-	n.ctrlEventChan = make(CtrlEventChan, ctrlEventChanLen)
 	return n.ctrlEventChan
 }
 
@@ -142,6 +144,9 @@ func (n *Session) StartSession() error {
 		if n.initSession() != nil {
 			return errors.New(fmt.Sprintf("StartSession fail,initSession error..."))
 		}
+
+		// just for test
+		n.RegisterAllRtcpPacketRcvCb()
 
 		res := n.ctx.startRtpSession()
 		n.startFlag = true
@@ -249,7 +254,7 @@ func (n *Session) receivePacketLoop() {
 
 		for range ticker {
 			if !n.startFlag || n.ctx == nil {
-				fmt.Printf("Session stop receivePacketLoop...\n")
+				fmt.Printf("Session stop receivePacketLoop sessionId:%v \n", n.streamId)
 				return
 			}
 			n.receiveData(buffer, 1500)
@@ -275,7 +280,6 @@ func (n *Session) destroy() {
 		n.ctx = nil
 		fmt.Printf("Session destroy %v\n", n.streamId)
 	}
-
 	n.RemoveDataReceiveChan()
 	n.RemoveCtrlEventChan()
 }
@@ -290,6 +294,11 @@ func (n *Session) receiveRtpCache(pl *DataPacket) {
 	n.dataReceiveChan <- pl
 }
 
+func (n *Session) receiveRtcpCache(pl *CtrlEvent) {
+	n.ctrlEvArr = append(n.ctrlEvArr, pl)
+	n.ctrlEventChan <- n.ctrlEvArr
+}
+
 func (n *Session) SsrcStreamOutForIndex(streamIndex uint32) *SsrcStream {
 	return n.streamsOut[streamIndex]
 }
@@ -298,6 +307,13 @@ func (n *Session) NewSsrcStreamOut(own *Address, ssrc uint32, sequenceNo uint16)
 	str := &SsrcStream{
 		sequenceNumber: sequenceNo,
 		ssrc:           ssrc,
+	}
+	if ssrc == 0 {
+		str.newSsrc()
+	}
+
+	if sequenceNo == 0 {
+		str.newSequence()
 	}
 	str.newInitialTimestamp()
 	n.streamId = str.initialStamp
@@ -450,5 +466,71 @@ func (n *Session) unPackRTPToH264(rtpPayload []byte, marker bool) {
 
 		}
 
+	}
+}
+
+func (n *Session) RegisterAllRtcpPacketRcvCb() {
+	n.RegisterRRPacketRcvCb()
+	n.RegisterSRPacketRcvCb()
+	n.RegisterAppPacketRcvCb()
+	n.RegisterSdesPrivateItemRcvCb()
+	n.RegisterSdesItemRcvCb()
+	n.RegisterByePacketRcvCb()
+	n.RegisterUnKnownPacketRcvCb()
+}
+
+func (n *Session) RegisterAppPacketRcvCb() bool {
+	if n.ctx != nil {
+		return n.ctx.RegisterAppPacketRcvCb(unsafe.Pointer(n.ctx))
+	} else {
+		return false
+	}
+}
+
+func (n *Session) RegisterRRPacketRcvCb() bool {
+	if n.ctx != nil {
+		return n.ctx.RegisterRRPacketRcvCb(unsafe.Pointer(n.ctx))
+	} else {
+		return false
+	}
+}
+
+func (n *Session) RegisterSRPacketRcvCb() bool {
+	if n.ctx != nil {
+		return n.ctx.RegisterSRPacketRcvCb(unsafe.Pointer(n.ctx))
+	} else {
+		return false
+	}
+}
+
+func (n *Session) RegisterSdesItemRcvCb() bool {
+	if n.ctx != nil {
+		return n.ctx.RegisterSdesItemRcvCb(unsafe.Pointer(n.ctx))
+	} else {
+		return false
+	}
+}
+
+func (n *Session) RegisterSdesPrivateItemRcvCb() bool {
+	if n.ctx != nil {
+		return n.ctx.RegisterSdesItemRcvCb(unsafe.Pointer(n.ctx))
+	} else {
+		return false
+	}
+}
+
+func (n *Session) RegisterByePacketRcvCb() bool {
+	if n.ctx != nil {
+		return n.ctx.RegisterByePacketRcvCb(unsafe.Pointer(n.ctx))
+	} else {
+		return false
+	}
+}
+
+func (n *Session) RegisterUnKnownPacketRcvCb() bool {
+	if n.ctx != nil {
+		return n.ctx.RegisterByePacketRcvCb(unsafe.Pointer(n.ctx))
+	} else {
+		return false
 	}
 }

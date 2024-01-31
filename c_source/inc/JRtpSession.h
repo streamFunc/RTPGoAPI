@@ -21,8 +21,6 @@ public:
     ~JRtpSession();
 
     virtual bool Init(const RtpSessionInitData* pInitData);
-    virtual bool Start();
-    virtual bool Stop();
 
     //rtp
     virtual int SendData(const uint8_t *buf, int len, uint16_t marker);
@@ -34,7 +32,13 @@ public:
     //rtcp
     virtual int SendRtcpAppData(uint8_t subType,const uint8_t name[4],const void* appData,int appDataLen);
 
+    void TryToWakeUp(){
+        if(m_pThread)tryToWakeUp();
+    }
 
+protected:
+    virtual void loop();
+    virtual bool stop();
 
 private:
     void __updateRtpHeaderData(void* p);

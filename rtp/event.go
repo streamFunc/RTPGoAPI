@@ -10,6 +10,7 @@ const (
 	RtcpRtpfb = 205 // RTPFB      Generic RTP Feedback   [RFC4585]
 	RtcpPsfb  = 206 // PSFB       Payload-specific       [RFC4585]
 	RtcpXr    = 207 // XR         extended report        [RFC3611]
+	unKnown   = 208
 )
 
 // RTCP SDES item types
@@ -34,5 +35,4 @@ type CtrlEvent struct {
 	Reason    string // Resaon string if it was available, empty otherwise
 }
 
-// CtrlEventChan Use a channel to send RTCP control events to the upper layer application.
 type CtrlEventChan chan []*CtrlEvent

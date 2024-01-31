@@ -63,6 +63,9 @@ func TestRtp(t *testing.T) {
 		Zone:     "",
 	})
 
+	r.RegisterRRPacketRcvCb()
+	r.RegisterSRPacketRcvCb()
+
 	if err := r.StartSession(); err != nil {
 		fmt.Println("error:", err)
 		return
