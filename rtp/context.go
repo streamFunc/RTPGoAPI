@@ -22,7 +22,7 @@ func RcvCb(buf *C.uint8_t, dataLen C.int, marker C.int, user unsafe.Pointer) C.i
 	if user == nil && marker == 1 || buf == nil {
 		return -1
 	}
-	//fmt.Println("Receive payload len=", len, "seq=", C.GetSequenceNumber(user), " from ssrc=", C.GetSsrc(user), " marker=", marker, " user=", user, " pt=", C.GetPayloadType(user))
+	//fmt.Println("Receive payload len=", dataLen, "seq=", C.GetSequenceNumber(user), " from ssrc=", C.GetSsrc(user), " marker=", marker, " user=", user, " pt=", C.GetPayloadType(user))
 
 	handle := (*CRtpSessionContext)(user)
 	length := int(dataLen)
@@ -284,6 +284,13 @@ func (rtp *CRtpSessionContext) startRtpSession() bool {
 		return false
 	}
 	return bool(C.StartRtpSession(rtp))
+}
+
+func (rtp *CRtpSessionContext) loopRtpSession() bool {
+	if rtp == nil {
+		return false
+	}
+	return bool(C.LoopRtpSession(rtp))
 }
 
 func (rtp *CRtpSessionContext) stopRtpSession() bool {
@@ -708,4 +715,17 @@ func (rtp *CRtpSessionContext) SendRtpOrRtcpRawData(data []byte, isRtp bool) int
 		cData = unsafe.Pointer(&data[0])
 	}
 	return int(C.SendRtpOrRtcpRawData(rtp, (*C.uint8_t)(cData), C.int(len(data)), C.bool(isRtp)))
+}
+
+func (rtp *CRtpSessionContext) SetRtcpDisable(disableRtcp int) {
+	C.SetRtcpDisable(rtp, C.int(disableRtcp))
+}
+
+func (rtp *CRtpSessionContext) RegisterRtpPacketRcvCb(user unsafe.Pointer) bool {
+	return bool(C.RegisterRtpPacketRcvCb(rtp, unsafe.Pointer(C.CRcvCb(C.RcvCb)), user))
+}
+
+// RegisterRtpOnlyPayloadRcvCb not used
+func (rtp *CRtpSessionContext) RegisterRtpOnlyPayloadRcvCb(user unsafe.Pointer) bool {
+	return bool(C.RegisterRtpOnlyPayloadRcvCb(rtp, unsafe.Pointer(C.CRcvCb(C.RcvCb)), user))
 }

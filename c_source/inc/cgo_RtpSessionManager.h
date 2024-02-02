@@ -64,6 +64,11 @@ int SendRtcpAppData(CRtpSessionManager* p,uint8_t subType,const uint8_t name[4],
  */
 int SendRtpOrRtcpRawData(CRtpSessionManager* p,uint8_t* data,int len,bool isRtp);
 
+/*
+ * disable rtcp.default enable
+ */
+void SetRtcpDisable(CRtpSessionManager* p,int disableRtcp);
+
 
 /*
  * rtcp register

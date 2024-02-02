@@ -104,7 +104,7 @@ namespace iRtp {
         /*
          * finish initializing list
          */
-        RtpSessionMpl() : m_bStopFlag(false),m_pThread(nullptr),m_isWaking(false){}
+        RtpSessionMpl() : m_bStopFlag(false),m_pThread(nullptr),m_isWaking(false),m_bDisableRtcp(false){}
 
         /*
          * it will do nothing. just to ensure that inherit object pointer or reference run destructor function
@@ -455,12 +455,21 @@ namespace iRtp {
         /*
          * set disable rtcp.it will not send rtcp
          */
+        inline void SetDisableRtcp(bool disableRtcp){
+            m_bDisableRtcp=disableRtcp;
+            setDisableRtcp();
+        }
+        inline bool GetDisableRtcp()const{return m_bDisableRtcp;}
 
+
+        /** Sets the session bandwidth to \c bw, which is specified in bytes per second. */
+        virtual int SetSessionBandwidth(double bw){return 0;}
 
 
     protected:
         virtual void loop()=0;
         virtual bool stop()=0;
+        virtual void setDisableRtcp(){}; //inherit class set specific config
 
         void tryToWakeUp(){
             if(m_isWaking)return;
@@ -489,7 +498,7 @@ namespace iRtp {
         std::mutex              m_mutex;
         std::atomic_bool        m_isWaking;
 
-//        bool                    m_bDisableRtcp;
+        bool                    m_bDisableRtcp;
 
 
 
