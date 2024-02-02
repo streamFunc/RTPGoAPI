@@ -686,3 +686,26 @@ func (rtp *CRtpSessionContext) GetByeReasonDataLen(rtcpPacket unsafe.Pointer) in
 	}
 	return int(C.GetByeReasonDataLen(unsafe.Pointer(rtp), rtcpPacket))
 }
+
+func (rtp *CRtpSessionContext) SendRtcpAppData(subType uint8, name [4]byte, appData []byte) int {
+	if appData == nil {
+		return 0
+	}
+	cAppData := unsafe.Pointer(nil)
+	if len(appData) > 0 {
+		cAppData = unsafe.Pointer(&appData[0])
+	}
+
+	return int(C.SendRtcpAppData(rtp, C.uint8_t(subType), (*C.uint8_t)(&name[0]), cAppData, C.int(len(appData))))
+}
+
+func (rtp *CRtpSessionContext) SendRtpOrRtcpRawData(data []byte, isRtp bool) int {
+	if data == nil {
+		return 0
+	}
+	cData := unsafe.Pointer(nil)
+	if len(data) > 0 {
+		cData = unsafe.Pointer(&data[0])
+	}
+	return int(C.SendRtpOrRtcpRawData(rtp, (*C.uint8_t)(cData), C.int(len(data)), C.bool(isRtp)))
+}

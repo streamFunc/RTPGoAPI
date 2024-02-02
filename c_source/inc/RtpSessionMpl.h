@@ -228,15 +228,6 @@ namespace iRtp {
 
 
         /*
-         * Send origin rtcp data.provide default function for disable rtcp.
-         * the user should pack the rtcp packet by self
-         * @param [in] buf:the cache to store data.you should alloc memory by yourself before calling
-         * @param [in] len:the len you expect
-         * @return the len of real send
-         */
-//        virtual int SendRtcpData(const uint8_t* buf,int len){return 0;}
-
-        /*
          * Send rtcp app data.provide default function for disable rtcp
          * @param [in] subType:the subType of app packet
          * @param [in] name:the name of app packet
@@ -245,6 +236,17 @@ namespace iRtp {
          *  @return the len of real send
          */
         virtual int SendRtcpAppData(uint8_t subType,const uint8_t name[4],const void* appData,int appDataLen){return 0;}
+
+        /*
+         * Send rtp or rtcp origin data.user need to pack rtp or rtcp packet
+         * @param [in] buf:rtp payload data
+         * @param [in] len:the len of payload data
+         * @param [in] isRtp:true send to rtpSocket or rtcpSocket
+         * @return the len of real send
+         */
+        virtual int SendRawData(uint8_t* data,int len,bool isRtp){return 0;}
+
+
 
         /*
          * Register rtcp receive callback function.
@@ -450,6 +452,10 @@ namespace iRtp {
             return p ? p->senderOctetCount: 0;
         }
 
+        /*
+         * set disable rtcp.it will not send rtcp
+         */
+
 
 
     protected:
@@ -482,6 +488,10 @@ namespace iRtp {
         std::condition_variable m_cv;
         std::mutex              m_mutex;
         std::atomic_bool        m_isWaking;
+
+//        bool                    m_bDisableRtcp;
+
+
 
     };
 

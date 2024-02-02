@@ -31,6 +31,7 @@ public:
 
     //rtcp
     virtual int SendRtcpAppData(uint8_t subType,const uint8_t name[4],const void* appData,int appDataLen);
+    virtual int SendRawData(uint8_t* data,int len,bool isRtp);
 
     void TryToWakeUp(){
         if(m_pThread)tryToWakeUp();

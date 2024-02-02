@@ -202,10 +202,8 @@ func (n *Session) WriteData(rp *DataPacket) (k int, err error) {
 		//	fmt.Printf("WriteData len:%v pts:%v marker:%v \n", len(rp.payload), rp.pts, rp.marker)
 		if rp.marker {
 			n.ctx.sendDataRtpSession(rp.payload, len(rp.payload), 1)
-			//n.ctx.sendDataWithTsRtpSession(rp.payload, len(rp.payload), rp.pts, 1)
 		} else {
 			n.ctx.sendDataRtpSession(rp.payload, len(rp.payload), 0)
-			//n.ctx.sendDataWithTsRtpSession(rp.payload, len(rp.payload), rp.pts, 0)
 		}
 
 	} else {
@@ -532,5 +530,21 @@ func (n *Session) RegisterUnKnownPacketRcvCb() bool {
 		return n.ctx.RegisterByePacketRcvCb(unsafe.Pointer(n.ctx))
 	} else {
 		return false
+	}
+}
+
+func (n *Session) SendRtcpAppData(subType uint8, name [4]byte, appData []byte) int {
+	if n.ctx != nil {
+		return n.ctx.SendRtcpAppData(subType, name, appData)
+	} else {
+		return -1
+	}
+}
+
+func (n *Session) SendRtpOrRtcpRawData(data []byte, isRtp bool) int {
+	if n.ctx != nil {
+		return n.ctx.SendRtpOrRtcpRawData(data, isRtp)
+	} else {
+		return -1
 	}
 }

@@ -54,6 +54,18 @@ int SendDataWithTsRtpSession(CRtpSessionManager* p,const uint8_t* buf,int len,ui
 int RcvDataWithTsRtpSession(CRtpSessionManager* p,uint8_t* buf,int len,uint32_t ts,CRcvCb rcvCb,void* user);
 
 /*
+ * send rtcp app packet
+ */
+int SendRtcpAppData(CRtpSessionManager* p,uint8_t subType,const uint8_t name[4],const void* appData,int appDataLen);
+
+
+/*
+ * send origin rtp or rtcp packet
+ */
+int SendRtpOrRtcpRawData(CRtpSessionManager* p,uint8_t* data,int len,bool isRtp);
+
+
+/*
  * rtcp register
  * @type:
  * @cb:it should be CRtcpRcv type or occur a error
