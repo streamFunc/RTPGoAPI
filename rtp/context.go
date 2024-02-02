@@ -56,7 +56,7 @@ func RcvCb(buf *C.uint8_t, dataLen C.int, marker C.int, user unsafe.Pointer) C.i
 	nUser, found := GlobalCRtpSessionMap[handle]
 	GlobalCRtpSessionMapMutex.Unlock()
 
-	//nUser.HandleCallBackData(payload, flag)
+	nUser.HandleCallBackData(payload, flag)
 	if found {
 		nUser.receiveRtpCache(rp)
 	} else {

@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
+	"strconv"
+
 	//	"os"
 	"sync"
 	"time"
@@ -39,10 +42,10 @@ type Session struct {
 	dataReceiveChan               chan *DataPacket
 	ctrlEvArr                     []*CtrlEvent
 	ctrlEventChan                 CtrlEventChan
-	//fp                            *os.File
-	//fpAudio                       *os.File
-	ctx *CRtpSessionContext
-	ini *CRtpSessionInitData
+	fp                            *os.File
+	fpAudio                       *os.File
+	ctx                           *CRtpSessionContext
+	ini                           *CRtpSessionInitData
 }
 
 type Address struct {
@@ -126,7 +129,7 @@ func (n *Session) RemoveCtrlEventChan() {
 
 func (n *Session) StartSession() error {
 	if n.ctx != nil {
-		/*if n.streamsOut[0].profile.MimeType == "H264" {
+		if n.streamsOut[0].profile.MimeType == "H264" {
 			strNum := strconv.FormatUint(uint64(n.streamId), 10)
 			n.fp, _ = os.Create(strNum + "_myReceivedVideo.264")
 			if n.fp == nil {
@@ -139,7 +142,7 @@ func (n *Session) StartSession() error {
 				fmt.Printf("error creat audio.pcm")
 			}
 
-		}*/
+		}
 
 		if n.initSession() != nil {
 			return errors.New(fmt.Sprintf("StartSession fail,initSession error..."))
@@ -176,7 +179,7 @@ func (n *Session) CloseSession() error {
 			fmt.Printf("StopSession fail,error:%v\n", res)
 			return errors.New(fmt.Sprintf("StopSession fail"))
 		} else {
-			/*if n.streamsOut[0].profile.MimeType == "H264" {
+			if n.streamsOut[0].profile.MimeType == "H264" {
 				if n.fp != nil {
 					n.fp.Close()
 					n.fp = nil
@@ -187,7 +190,7 @@ func (n *Session) CloseSession() error {
 					n.fpAudio.Close()
 					n.fpAudio = nil
 				}
-			}*/
+			}
 			fmt.Printf("StopSession success streamId:%v\n", n.streamId)
 		}
 		n.destroy()
@@ -265,9 +268,9 @@ func (n *Session) HandleCallBackData(data []byte, marker bool) {
 		n.unPackRTPToH264(data, marker)
 	} else if n.streamsOut[0].profile.MimeType == "PCMA" {
 		//fmt.Printf("audio pcma len:%v\n", len(data))
-		/*if n.fpAudio != nil {
+		if n.fpAudio != nil {
 			n.fpAudio.Write(data)
-		}*/
+		}
 	}
 }
 
@@ -396,9 +399,9 @@ func (n *Session) unPackRTPToH264(rtpPayload []byte, marker bool) {
 			copy(o[0:], rtpPayload[2:])
 			n.frameBufData = append(n.frameBufData, o...)
 			if marker {
-				/*if n.fp != nil {
+				if n.fp != nil {
 					n.fp.Write(n.frameBufData)
-				}*/
+				}
 				n.frameBufData = nil
 			}
 		} else {
@@ -428,10 +431,10 @@ func (n *Session) unPackRTPToH264(rtpPayload []byte, marker bool) {
 			frame[1] = 0x00
 			frame[2] = 0x01
 			copy(frame[3:], stapAData[2:nalSize+2])
-			/*if n.fp != nil {
+			if n.fp != nil {
 				//fmt.Printf("H264Rtp stap-a length:%v\n", len(frame))
 				n.fp.Write(frame)
-			}*/
+			}
 
 			stapAData = stapAData[nalSize+2:]
 			stapADataLen = stapADataLen - 2 - nalSize
@@ -450,9 +453,9 @@ func (n *Session) unPackRTPToH264(rtpPayload []byte, marker bool) {
 			frame[2] = 0x01
 			copy(frame[3:], rtpPayload[0:])
 			n.frameBufData = append(n.frameBufData, frame...)
-			/*if n.fp != nil {
+			if n.fp != nil {
 				n.fp.Write(n.frameBufData)
-			}*/
+			}
 			n.frameBufData = nil
 		} else {
 			frame := make([]byte, len(rtpPayload)+3)
