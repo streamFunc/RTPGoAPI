@@ -128,7 +128,8 @@ func (n *Session) StartSession() error {
 
 		// just for test
 		//n.SetRtcpDisable(true)
-		n.RegisterAllRtcpPacketRcvCb()
+		n.RegisterAllTypeRtcpPacketRcvCb()
+		//n.RegisterRtcpOriginPacketRcvCb()
 
 		res := n.ctx.loopRtpSession()
 		n.startFlag = true
@@ -423,7 +424,7 @@ func (n *Session) unPackRTPToH264(rtpPayload []byte, marker bool) {
 	}
 }
 
-func (n *Session) RegisterAllRtcpPacketRcvCb() {
+func (n *Session) RegisterAllTypeRtcpPacketRcvCb() {
 	n.RegisterRRPacketRcvCb()
 	n.RegisterSRPacketRcvCb()
 	n.RegisterAppPacketRcvCb()
@@ -436,6 +437,14 @@ func (n *Session) RegisterAllRtcpPacketRcvCb() {
 func (n *Session) RegisterRtpPacketRcvCb() bool {
 	if n.ctx != nil {
 		return n.ctx.RegisterRtpPacketRcvCb(unsafe.Pointer(n.ctx))
+	} else {
+		return false
+	}
+}
+
+func (n *Session) RegisterRtcpOriginPacketRcvCb() bool {
+	if n.ctx != nil {
+		return n.ctx.RegisterOriginPacketRcvCb(unsafe.Pointer(n.ctx))
 	} else {
 		return false
 	}

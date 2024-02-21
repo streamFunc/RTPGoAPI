@@ -67,6 +67,16 @@ func RcvCb(buf *C.uint8_t, dataLen C.int, marker C.int, user unsafe.Pointer) C.i
 
 }
 
+//export RtcpOriginPacketRcvCb
+func RtcpOriginPacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
+	if user == nil {
+		return
+	}
+	handle := (*CRtpSessionContext)(user)
+
+	fmt.Println("Receive rtcp origin dataLen=", handle.GetRtcpOriginDataLen(rtcpPacket), "ssrc=", handle.GetRtcpOriginSsrc(rtcpPacket))
+}
+
 //export RtcpAppPacketRcvCb
 func RtcpAppPacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 	if user == nil {
@@ -414,6 +424,10 @@ func (rtp *CRtpSessionContext) getCC() uint8 {
 
 // rtcp register
 
+func (rtp *CRtpSessionContext) RegisterOriginPacketRcvCb(user unsafe.Pointer) bool {
+	return bool(C.RegisterOriginPacketRcvCb(rtp, unsafe.Pointer(C.CRtcpRcvCb(C.RtcpOriginPacketRcvCb)), user))
+}
+
 func (rtp *CRtpSessionContext) RegisterAppPacketRcvCb(user unsafe.Pointer) bool {
 	return bool(C.RegisterAppPacketRcvCb(rtp, unsafe.Pointer(C.CRtcpRcvCb(C.RtcpAppPacketRcvCb)), user))
 }
@@ -440,6 +454,34 @@ func (rtp *CRtpSessionContext) RegisterByePacketRcvCb(user unsafe.Pointer) bool 
 
 func (rtp *CRtpSessionContext) RegisterUnKnownPacketRcvCb(user unsafe.Pointer) bool {
 	return bool(C.RegisterUnKnownPacketRcvCb(rtp, unsafe.Pointer(C.CRtcpRcvCb(C.RtcpUnKnownPacketRcvCb)), user))
+}
+
+//rtcp origin data
+
+func (rtp *CRtpSessionContext) GetRtcpOriginData(rtcpPacket unsafe.Pointer) []uint8 {
+	if rtp == nil {
+		return nil
+	}
+	cData := C.GetRtcpPacketData(unsafe.Pointer(rtp), rtcpPacket)
+	defer C.free(unsafe.Pointer(cData))
+
+	dataLen := rtp.GetRtcpOriginDataLen(rtcpPacket)
+	return C.GoBytes(unsafe.Pointer(cData), C.int(dataLen))
+
+}
+
+func (rtp *CRtpSessionContext) GetRtcpOriginDataLen(rtcpPacket unsafe.Pointer) int {
+	if rtp == nil {
+		return 0
+	}
+	return int(C.GetPacketDataLength(unsafe.Pointer(rtp), rtcpPacket))
+}
+
+func (rtp *CRtpSessionContext) GetRtcpOriginSsrc(rtcpPacket unsafe.Pointer) uint32 {
+	if rtp == nil {
+		return 0
+	}
+	return uint32(C.GetSSRC(unsafe.Pointer(rtp), rtcpPacket))
 }
 
 //  rtcp app packet
