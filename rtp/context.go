@@ -53,8 +53,8 @@ func RcvCb(buf *C.uint8_t, dataLen C.int, marker C.int, user unsafe.Pointer) C.i
 	}
 
 	GlobalCRtpSessionMapMutex.Lock()
+	defer GlobalCRtpSessionMapMutex.Unlock()
 	nUser, found := GlobalCRtpSessionMap[handle]
-	GlobalCRtpSessionMapMutex.Unlock()
 
 	//nUser.HandleCallBackData(payload, flag)
 	if found {
@@ -91,8 +91,8 @@ func RtcpAppPacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 	}
 
 	GlobalCRtpSessionMapMutex.Lock()
+	defer GlobalCRtpSessionMapMutex.Unlock()
 	nUser, found := GlobalCRtpSessionMap[handle]
-	GlobalCRtpSessionMapMutex.Unlock()
 
 	if found {
 		nUser.receiveRtcpCache(rp)
@@ -122,8 +122,8 @@ func RtcpRRPacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 	}
 
 	GlobalCRtpSessionMapMutex.Lock()
+	defer GlobalCRtpSessionMapMutex.Unlock()
 	nUser, found := GlobalCRtpSessionMap[handle]
-	GlobalCRtpSessionMapMutex.Unlock()
 
 	if found {
 		nUser.receiveRtcpCache(rp)
@@ -143,8 +143,8 @@ func RtcpSRPacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 	}
 
 	GlobalCRtpSessionMapMutex.Lock()
+	defer GlobalCRtpSessionMapMutex.Unlock()
 	nUser, found := GlobalCRtpSessionMap[handle]
-	GlobalCRtpSessionMapMutex.Unlock()
 
 	if found {
 		nUser.receiveRtcpCache(rp)
@@ -164,8 +164,8 @@ func RtcpSdesItemRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 	}
 
 	GlobalCRtpSessionMapMutex.Lock()
+	defer GlobalCRtpSessionMapMutex.Unlock()
 	nUser, found := GlobalCRtpSessionMap[handle]
-	GlobalCRtpSessionMapMutex.Unlock()
 
 	if found {
 		nUser.receiveRtcpCache(rp)
@@ -186,8 +186,8 @@ func RtcpSdesPrivateItemRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 	}
 
 	GlobalCRtpSessionMapMutex.Lock()
+	defer GlobalCRtpSessionMapMutex.Unlock()
 	nUser, found := GlobalCRtpSessionMap[handle]
-	GlobalCRtpSessionMapMutex.Unlock()
 
 	if found {
 		nUser.receiveRtcpCache(rp)
@@ -207,8 +207,8 @@ func RtcpByePacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 	}
 
 	GlobalCRtpSessionMapMutex.Lock()
+	defer GlobalCRtpSessionMapMutex.Unlock()
 	nUser, found := GlobalCRtpSessionMap[handle]
-	GlobalCRtpSessionMapMutex.Unlock()
 
 	if found {
 		nUser.receiveRtcpCache(rp)
@@ -228,8 +228,8 @@ func RtcpUnKnownPacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 	}
 
 	GlobalCRtpSessionMapMutex.Lock()
+	defer GlobalCRtpSessionMapMutex.Unlock()
 	nUser, found := GlobalCRtpSessionMap[handle]
-	GlobalCRtpSessionMapMutex.Unlock()
 
 	if found {
 		nUser.receiveRtcpCache(rp)

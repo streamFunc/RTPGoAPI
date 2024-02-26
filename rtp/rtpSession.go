@@ -12,14 +12,13 @@ import (
 )
 
 var GlobalCRtpSessionMap map[*CRtpSessionContext]*Session
+var GlobalCRtpSessionMapMutex sync.Mutex
 
 const (
 	dataReceiveChanLen  = 32
 	ctrlEventChanLen    = 3
 	maxNumberOutStreams = 5
 )
-
-var GlobalCRtpSessionMapMutex sync.Mutex
 
 type Session struct {
 	LocalIp, RemoteIp             string
@@ -69,10 +68,10 @@ func NewSession(rp *TransportUDP, tv TransportRecv) *Session {
 	}
 
 	GlobalCRtpSessionMapMutex.Lock()
+	defer GlobalCRtpSessionMapMutex.Unlock()
 	GlobalCRtpSessionMap[dec.ctx] = &dec
-	GlobalCRtpSessionMapMutex.Unlock()
 
-	fmt.Printf("session localIp:%v port:%v  payloadType:%v\n", dec.LocalIp, dec.LocalPort, dec.PayloadType)
+	fmt.Printf("session localIp:%v port:%v  \n", dec.LocalIp, dec.LocalPort)
 
 	return &dec
 }
@@ -153,8 +152,8 @@ func (n *Session) CloseSession() error {
 		time.Sleep(time.Second)
 		res := n.ctx.stopRtpSession()
 		GlobalCRtpSessionMapMutex.Lock()
+		defer GlobalCRtpSessionMapMutex.Unlock()
 		delete(GlobalCRtpSessionMap, n.ctx)
-		GlobalCRtpSessionMapMutex.Unlock()
 		if res == false {
 			fmt.Printf("StopSession fail,error:%v\n", res)
 			return errors.New(fmt.Sprintf("StopSession fail"))
