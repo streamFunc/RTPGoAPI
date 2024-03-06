@@ -11,8 +11,7 @@ import (
 	"unsafe"
 )
 
-var GlobalCRtpSessionMap map[*CRtpSessionContext]*Session
-var GlobalCRtpSessionMapMutex sync.Mutex
+var GlobalCRtpSessionMap sync.Map
 
 const (
 	dataReceiveChanLen  = 32
@@ -67,9 +66,7 @@ func NewSession(rp *TransportUDP, tv TransportRecv) *Session {
 		return nil
 	}
 
-	GlobalCRtpSessionMapMutex.Lock()
-	defer GlobalCRtpSessionMapMutex.Unlock()
-	GlobalCRtpSessionMap[dec.ctx] = &dec
+	GlobalCRtpSessionMap.Store(dec.ctx, &dec)
 
 	fmt.Printf("session localIp:%v port:%v  \n", dec.LocalIp, dec.LocalPort)
 
@@ -149,11 +146,8 @@ func (n *Session) StartSession() error {
 func (n *Session) CloseSession() error {
 	if n.ctx != nil && n.startFlag {
 		n.startFlag = false
-		time.Sleep(time.Second)
 		res := n.ctx.stopRtpSession()
-		GlobalCRtpSessionMapMutex.Lock()
-		defer GlobalCRtpSessionMapMutex.Unlock()
-		delete(GlobalCRtpSessionMap, n.ctx)
+		time.Sleep(time.Second)
 		if res == false {
 			fmt.Printf("StopSession fail,error:%v\n", res)
 			return errors.New(fmt.Sprintf("StopSession fail"))
@@ -242,6 +236,7 @@ func (n *Session) destroy() {
 	if n.ctx != nil {
 		n.ini.destroySessionInitData()
 		n.ctx.destroyRtpSession()
+		GlobalCRtpSessionMap.Delete(n.ctx)
 		n.ctx = nil
 		fmt.Printf("Session destroy %v\n", n.streamId)
 	}

@@ -51,16 +51,13 @@ func RcvCb(buf *C.uint8_t, dataLen C.int, marker C.int, user unsafe.Pointer) C.i
 		csrc:        handle.getCSrc(),
 		seq:         handle.getSequenceNumber(),
 	}
-
-	GlobalCRtpSessionMapMutex.Lock()
-	defer GlobalCRtpSessionMapMutex.Unlock()
-	nUser, found := GlobalCRtpSessionMap[handle]
-
-	//nUser.HandleCallBackData(payload, flag)
-	if found {
-		nUser.receiveRtpCache(rp)
-	} else {
-		fmt.Printf("not found user,had destory\n")
+	if val, ok := GlobalCRtpSessionMap.Load(handle); ok {
+		if session, ok := val.(*Session); ok {
+			session.receiveRtpCache(rp)
+			//session.HandleCallBackData(payload, flag)
+		} else {
+			fmt.Printf("not found user,had destory\n")
+		}
 	}
 
 	return dataLen
@@ -84,18 +81,18 @@ func RtcpAppPacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 	}
 	handle := (*CRtpSessionContext)(user)
 
-	fmt.Println("Receive rtcp AppData name=", handle.GetAppName(rtcpPacket), "subType=", C.GetAppSubType(user, rtcpPacket))
+	//fmt.Println("Receive rtcp AppData name=", handle.GetAppName(rtcpPacket), "subType=", C.GetAppSubType(user, rtcpPacket))
 
 	rp := &CtrlEvent{
 		EventType: RtcpApp,
 	}
 
-	GlobalCRtpSessionMapMutex.Lock()
-	defer GlobalCRtpSessionMapMutex.Unlock()
-	nUser, found := GlobalCRtpSessionMap[handle]
-
-	if found {
-		nUser.receiveRtcpCache(rp)
+	if val, ok := GlobalCRtpSessionMap.Load(handle); ok {
+		if session, ok := val.(*Session); ok {
+			session.receiveRtcpCache(rp)
+		} else {
+			fmt.Printf("RtcpAppPacketRcvCb cb not found user,had destory\n")
+		}
 	}
 
 }
@@ -106,7 +103,7 @@ func RtcpRRPacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 		return
 	}
 	handle := (*CRtpSessionContext)(user)
-	fmt.Println("Receive rtcp RR lost packet=", handle.GetRRLostPacketNumber(rtcpPacket), "jitter=", handle.GetRRJitter(rtcpPacket))
+	//fmt.Println("Receive rtcp RR lost packet=", handle.GetRRLostPacketNumber(rtcpPacket), "jitter=", handle.GetRRJitter(rtcpPacket))
 
 	/*packetLen := 88
 	// 将 rtcpPacket 转换为 []byte 切片
@@ -121,12 +118,12 @@ func RtcpRRPacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 		//buffer:    rtcpData,
 	}
 
-	GlobalCRtpSessionMapMutex.Lock()
-	defer GlobalCRtpSessionMapMutex.Unlock()
-	nUser, found := GlobalCRtpSessionMap[handle]
-
-	if found {
-		nUser.receiveRtcpCache(rp)
+	if val, ok := GlobalCRtpSessionMap.Load(handle); ok {
+		if session, ok := val.(*Session); ok {
+			session.receiveRtcpCache(rp)
+		} else {
+			fmt.Printf("RtcpRRPacketRcvCb cb not found user,had destory\n")
+		}
 	}
 }
 
@@ -136,18 +133,18 @@ func RtcpSRPacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 		return
 	}
 	handle := (*CRtpSessionContext)(user)
-	fmt.Println("Receive rtcp SR sender packet count=", handle.GetSRSenderPacketCount(rtcpPacket))
+	//fmt.Println("Receive rtcp SR sender packet count=", handle.GetSRSenderPacketCount(rtcpPacket))
 
 	rp := &CtrlEvent{
 		EventType: RtcpSR,
 	}
 
-	GlobalCRtpSessionMapMutex.Lock()
-	defer GlobalCRtpSessionMapMutex.Unlock()
-	nUser, found := GlobalCRtpSessionMap[handle]
-
-	if found {
-		nUser.receiveRtcpCache(rp)
+	if val, ok := GlobalCRtpSessionMap.Load(handle); ok {
+		if session, ok := val.(*Session); ok {
+			session.receiveRtcpCache(rp)
+		} else {
+			fmt.Printf("RtcpSRPacketRcvCb cb not found user,had destory\n")
+		}
 	}
 }
 
@@ -157,18 +154,18 @@ func RtcpSdesItemRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 		return
 	}
 	handle := (*CRtpSessionContext)(user)
-	fmt.Println("Receive rtcp sdes item packet len=", handle.GetSdesItemDataLen(rtcpPacket), "type=", handle.GetSdesItemType(rtcpPacket))
+	//fmt.Println("Receive rtcp sdes item packet len=", handle.GetSdesItemDataLen(rtcpPacket), "type=", handle.GetSdesItemType(rtcpPacket))
 
 	rp := &CtrlEvent{
 		EventType: RtcpSdes,
 	}
 
-	GlobalCRtpSessionMapMutex.Lock()
-	defer GlobalCRtpSessionMapMutex.Unlock()
-	nUser, found := GlobalCRtpSessionMap[handle]
-
-	if found {
-		nUser.receiveRtcpCache(rp)
+	if val, ok := GlobalCRtpSessionMap.Load(handle); ok {
+		if session, ok := val.(*Session); ok {
+			session.receiveRtcpCache(rp)
+		} else {
+			fmt.Printf("RtcpSdesItemRcvCb cb not found user,had destory\n")
+		}
 	}
 
 }
@@ -179,18 +176,18 @@ func RtcpSdesPrivateItemRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 		return
 	}
 	handle := (*CRtpSessionContext)(user)
-	fmt.Println("Receive rtcp SdesPrivateItem packet len=", handle.GetSdesPrivateValueDataLen(rtcpPacket))
+	//fmt.Println("Receive rtcp SdesPrivateItem packet len=", handle.GetSdesPrivateValueDataLen(rtcpPacket))
 
 	rp := &CtrlEvent{
 		EventType: RtcpSdes,
 	}
 
-	GlobalCRtpSessionMapMutex.Lock()
-	defer GlobalCRtpSessionMapMutex.Unlock()
-	nUser, found := GlobalCRtpSessionMap[handle]
-
-	if found {
-		nUser.receiveRtcpCache(rp)
+	if val, ok := GlobalCRtpSessionMap.Load(handle); ok {
+		if session, ok := val.(*Session); ok {
+			session.receiveRtcpCache(rp)
+		} else {
+			fmt.Printf("RtcpSdesPrivateItemRcvCb cb not found user,had destory\n")
+		}
 	}
 }
 
@@ -200,18 +197,18 @@ func RtcpByePacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 		return
 	}
 	handle := (*CRtpSessionContext)(user)
-	fmt.Println("Receive rtcp bye reason len=", handle.GetByeReasonDataLen(rtcpPacket))
+	//fmt.Println("Receive rtcp bye reason len=", handle.GetByeReasonDataLen(rtcpPacket))
 
 	rp := &CtrlEvent{
 		EventType: RtcpBye,
 	}
 
-	GlobalCRtpSessionMapMutex.Lock()
-	defer GlobalCRtpSessionMapMutex.Unlock()
-	nUser, found := GlobalCRtpSessionMap[handle]
-
-	if found {
-		nUser.receiveRtcpCache(rp)
+	if val, ok := GlobalCRtpSessionMap.Load(handle); ok {
+		if session, ok := val.(*Session); ok {
+			session.receiveRtcpCache(rp)
+		} else {
+			fmt.Printf("RtcpByePacketRcvCb cb not found user,had destory\n")
+		}
 	}
 }
 
@@ -221,18 +218,18 @@ func RtcpUnKnownPacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 		return
 	}
 	handle := (*CRtpSessionContext)(user)
-	fmt.Println("Receive rtcp unKnow  len=", handle.GetUnKnownRtcpPacketDataLen(rtcpPacket))
+	//fmt.Println("Receive rtcp unKnow  len=", handle.GetUnKnownRtcpPacketDataLen(rtcpPacket))
 
 	rp := &CtrlEvent{
 		EventType: unKnown,
 	}
 
-	GlobalCRtpSessionMapMutex.Lock()
-	defer GlobalCRtpSessionMapMutex.Unlock()
-	nUser, found := GlobalCRtpSessionMap[handle]
-
-	if found {
-		nUser.receiveRtcpCache(rp)
+	if val, ok := GlobalCRtpSessionMap.Load(handle); ok {
+		if session, ok := val.(*Session); ok {
+			session.receiveRtcpCache(rp)
+		} else {
+			fmt.Printf("RtcpUnKnownPacketRcvCb cb not found user,had destory\n")
+		}
 	}
 }
 
