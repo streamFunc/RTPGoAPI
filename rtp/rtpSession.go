@@ -147,7 +147,6 @@ func (n *Session) CloseSession() error {
 	if n.ctx != nil && n.startFlag {
 		n.startFlag = false
 		res := n.ctx.stopRtpSession()
-		time.Sleep(time.Second)
 		if res == false {
 			fmt.Printf("StopSession fail,error:%v\n", res)
 			return errors.New(fmt.Sprintf("StopSession fail"))
@@ -234,6 +233,7 @@ func (n *Session) HandleCallBackData(data []byte, marker bool) {
 
 func (n *Session) destroy() {
 	if n.ctx != nil {
+		time.Sleep(time.Second * 3)
 		n.ini.destroySessionInitData()
 		n.ctx.destroyRtpSession()
 		GlobalCRtpSessionMap.Delete(n.ctx)
