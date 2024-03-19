@@ -146,6 +146,7 @@ func (n *Session) StartSession() error {
 func (n *Session) CloseSession() error {
 	if n.ctx != nil && n.startFlag {
 		n.startFlag = false
+		time.Sleep(time.Second)
 		res := n.ctx.stopRtpSession()
 		if res == false {
 			fmt.Printf("StopSession fail,error:%v\n", res)
