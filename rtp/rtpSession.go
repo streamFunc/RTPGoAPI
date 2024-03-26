@@ -4,8 +4,8 @@ import "C"
 import (
 	"errors"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"net"
-	//	"os"
 	"sync"
 	"time"
 	"unsafe"
@@ -14,8 +14,8 @@ import (
 var GlobalCRtpSessionMap sync.Map
 
 const (
-	dataReceiveChanLen  = 32
-	ctrlEventChanLen    = 3
+	dataReceiveChanLen  = 160
+	ctrlEventChanLen    = 32
 	maxNumberOutStreams = 5
 )
 
@@ -43,6 +43,19 @@ type Address struct {
 	Zone               string
 }
 
+var logger *logrus.Entry
+
+func init() {
+	gl := logrus.New()
+	// Initialize all packages logger
+	InitServerLogger(gl)
+}
+
+// InitServerLogger can be called multiple times before server starts to override default logger
+func InitServerLogger(gl *logrus.Logger) {
+	logger = gl.WithFields(logrus.Fields{"module": "rtp"})
+}
+
 func NewSession(rp *TransportUDP, tv TransportRecv) *Session {
 	initConfigOnce()
 
@@ -62,13 +75,13 @@ func NewSession(rp *TransportUDP, tv TransportRecv) *Session {
 	dec.ctrlEvArr = make([]*CtrlEvent, 0, 10)
 
 	if dec.ctx == nil {
-		fmt.Printf("NewRtpSession error creat dec.ctx or dec.ini fail\n")
+		logger.Errorf("NewRtpSession error creat dec.ctx or dec.ini fail\n")
 		return nil
 	}
 
 	GlobalCRtpSessionMap.Store(dec.ctx, &dec)
 
-	fmt.Printf("session localIp:%v port:%v  \n", dec.LocalIp, dec.LocalPort)
+	logger.Infof("session localIp:%v port:%v  \n", dec.LocalIp, dec.LocalPort)
 
 	return &dec
 }
@@ -130,14 +143,14 @@ func (n *Session) StartSession() error {
 		res := n.ctx.loopRtpSession()
 		n.startFlag = true
 		if res == false {
-			fmt.Printf("StartSession fail,error:%v", res)
+			logger.Errorf("StartSession fail,error:%v", res)
 			return errors.New(fmt.Sprintf("StartSession  fail"))
 		} else {
-			fmt.Printf("StartSession success streamId:%v\n", n.streamId)
+			logger.Infof("StartSession success streamId:%v\n", n.streamId)
 			//go n.receivePacketLoop()
 		}
 	} else {
-		fmt.Printf("StartSession fail,ctx nil\n")
+		logger.Error("StartSession fail,ctx nil\n")
 		return errors.New(fmt.Sprintf("ctx nil StartSession fail"))
 	}
 	return nil
@@ -146,13 +159,12 @@ func (n *Session) StartSession() error {
 func (n *Session) CloseSession() error {
 	if n.ctx != nil && n.startFlag {
 		n.startFlag = false
-		time.Sleep(time.Second)
 		res := n.ctx.stopRtpSession()
 		if res == false {
-			fmt.Printf("StopSession fail,error:%v\n", res)
+			logger.Error("StopSession fail,error:%v\n", res)
 			return errors.New(fmt.Sprintf("StopSession fail"))
 		} else {
-			fmt.Printf("StopSession success streamId:%v\n", n.streamId)
+			logger.Infof("StopSession success streamId:%v\n", n.streamId)
 		}
 		n.destroy()
 	} else {
@@ -163,11 +175,13 @@ func (n *Session) CloseSession() error {
 
 func (n *Session) WriteData(rp *DataPacket) (k int, err error) {
 	if n.ctx != nil && n.startFlag {
-		//	fmt.Printf("WriteData len:%v pts:%v marker:%v \n", len(rp.payload), rp.pts, rp.marker)
+		//fmt.Printf("WriteData len:%v pt:%v pts:%v marker:%v \n", len(rp.payload), rp.payloadType, rp.pts, rp.marker)
 		if rp.marker {
-			n.ctx.sendDataRtpSession(rp.payload, len(rp.payload), 1)
+			//n.ctx.sendDataRtpSession(rp.payload, len(rp.payload), 1)
+			n.ctx.sendDataWithTsRtpSession(rp.payload, len(rp.payload), rp.pts, 1)
 		} else {
-			n.ctx.sendDataRtpSession(rp.payload, len(rp.payload), 0)
+			//n.ctx.sendDataRtpSession(rp.payload, len(rp.payload), 0)
+			n.ctx.sendDataWithTsRtpSession(rp.payload, len(rp.payload), rp.pts, 0)
 		}
 
 	} else {
@@ -182,14 +196,13 @@ func (n *Session) initSession() error {
 			n.ClockRate = n.streamsOut[0].profile.ClockRate
 			n.PayloadType = int(n.streamsOut[0].payloadTypeNumber)
 			n.profile = n.streamsOut[0].profile.ProfileName
-			fmt.Printf("InitSession id:%v ClockRate:%v  PayloadType:%v type:%v\n", n.streamsOut[0].initialStamp,
+			logger.Infof("InitSession id:%v ClockRate:%v  PayloadType:%v type:%v\n", n.streamsOut[0].initialStamp,
 				n.streamsOut[0].profile.ClockRate, n.streamsOut[0].payloadTypeNumber, n.streamsOut[0].profile.MimeType)
 		}
 
 		n.ini = creatRtpInitData(n.LocalIp, n.RemoteIp, n.LocalPort, n.RemotePort, n.PayloadType, n.ClockRate)
 		res := n.ctx.initRtpSession(n.ini)
 		if res == false {
-			fmt.Printf("InitSession fail\n")
 			return errors.New(fmt.Sprintf("InitSession  fail"))
 		}
 	} else {
@@ -216,7 +229,6 @@ func (n *Session) receivePacketLoop() {
 
 		for range ticker {
 			if !n.startFlag || n.ctx == nil {
-				fmt.Printf("Session stop receivePacketLoop sessionId:%v \n", n.streamId)
 				return
 			}
 			n.receiveData(buffer, 1500)
@@ -239,7 +251,7 @@ func (n *Session) destroy() {
 		n.ctx.destroyRtpSession()
 		GlobalCRtpSessionMap.Delete(n.ctx)
 		n.ctx = nil
-		fmt.Printf("Session destroy %v\n", n.streamId)
+		logger.Infof("Session destroy %v\n", n.streamId)
 	}
 	n.RemoveDataReceiveChan()
 	n.RemoveCtrlEventChan()
@@ -247,17 +259,22 @@ func (n *Session) destroy() {
 
 // maybe panic when dataReceiveChan closed
 func (n *Session) receiveRtpCache(pl *DataPacket) {
-	/*select {
+	select {
 	case n.dataReceiveChan <- pl:
 	default:
-		fmt.Println("Channel is closed or blocked")
-	}*/
-	n.dataReceiveChan <- pl
+		logger.Errorf("rtp Channel is closed or blocked,discard it")
+	}
+	//n.dataReceiveChan <- pl
 }
 
 func (n *Session) receiveRtcpCache(pl *CtrlEvent) {
 	n.ctrlEvArr = append(n.ctrlEvArr, pl)
-	n.ctrlEventChan <- n.ctrlEvArr
+	select {
+	case n.ctrlEventChan <- n.ctrlEvArr:
+	default:
+		logger.Errorf("rtcp Channel is closed or blocked,discard it")
+	}
+
 }
 
 func (n *Session) SsrcStreamOutForIndex(streamIndex uint32) *SsrcStream {
@@ -296,7 +313,7 @@ func (n *Session) PacketH264ToRtpAndSend(annexbPayload []byte, pts uint32, paylo
 			packet.SetPayloadType(pt)
 
 			if _, err := n.WriteData(packet); err != nil {
-				fmt.Printf(" PacketH264ToRtpAndSend WriteData fail...\n")
+				logger.Errorf(" PacketH264ToRtpAndSend WriteData fail...\n")
 			}
 
 		}

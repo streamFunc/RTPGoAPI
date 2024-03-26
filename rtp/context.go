@@ -13,7 +13,6 @@ import "C"
 //#include "cgo_RtpSessionManager.h"
 import "C"
 import (
-	"fmt"
 	"unsafe"
 )
 
@@ -22,7 +21,8 @@ func RcvCb(buf *C.uint8_t, dataLen C.int, marker C.int, user unsafe.Pointer) C.i
 	if user == nil && marker == 1 || buf == nil {
 		return -1
 	}
-	//fmt.Println("Receive payload len=", dataLen, "seq=", C.GetSequenceNumber(user), " from ssrc=", C.GetSsrc(user), " marker=", marker, " user=", user, " pt=", C.GetPayloadType(user))
+	//fmt.Println( "Receive payload len=", dataLen, "seq=", C.GetSequenceNumber(user), " from ssrc=", C.GetSsrc(user),
+	//" marker=", marker, " user=", user, " pt=", C.GetPayloadType(user))
 
 	handle := (*CRtpSessionContext)(user)
 	length := int(dataLen)
@@ -31,7 +31,6 @@ func RcvCb(buf *C.uint8_t, dataLen C.int, marker C.int, user unsafe.Pointer) C.i
 	slice := make([]byte, length)
 	copy(slice, data)
 
-	// Parse RTP payload
 	payload := parseRtpPayload(slice)
 
 	var flag bool
@@ -51,13 +50,16 @@ func RcvCb(buf *C.uint8_t, dataLen C.int, marker C.int, user unsafe.Pointer) C.i
 		csrc:        handle.getCSrc(),
 		seq:         handle.getSequenceNumber(),
 	}
+
 	if val, ok := GlobalCRtpSessionMap.Load(handle); ok {
 		if session, ok := val.(*Session); ok {
 			session.receiveRtpCache(rp)
 			//session.HandleCallBackData(payload, flag)
 		} else {
-			fmt.Printf("not found user,had destory\n")
+			logger.Errorf("not find user,had destory\n")
 		}
+	} else {
+		logger.Errorf("not find handle,return\n")
 	}
 
 	return dataLen
@@ -71,7 +73,7 @@ func RtcpOriginPacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 	}
 	handle := (*CRtpSessionContext)(user)
 
-	fmt.Println("Receive rtcp origin dataLen=", handle.GetRtcpOriginDataLen(rtcpPacket), "ssrc=", handle.GetRtcpOriginSsrc(rtcpPacket))
+	logger.Info("Receive rtcp origin dataLen=", handle.GetRtcpOriginDataLen(rtcpPacket), "ssrc=", handle.GetRtcpOriginSsrc(rtcpPacket))
 }
 
 //export RtcpAppPacketRcvCb
@@ -91,7 +93,7 @@ func RtcpAppPacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 		if session, ok := val.(*Session); ok {
 			session.receiveRtcpCache(rp)
 		} else {
-			fmt.Printf("RtcpAppPacketRcvCb cb not found user,had destory\n")
+			logger.Errorf("RtcpAppPacketRcvCb cb not found user,had destory\n")
 		}
 	}
 
@@ -122,7 +124,7 @@ func RtcpRRPacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 		if session, ok := val.(*Session); ok {
 			session.receiveRtcpCache(rp)
 		} else {
-			fmt.Printf("RtcpRRPacketRcvCb cb not found user,had destory\n")
+			logger.Errorf("RtcpRRPacketRcvCb cb not found user,had destory\n")
 		}
 	}
 }
@@ -143,7 +145,7 @@ func RtcpSRPacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 		if session, ok := val.(*Session); ok {
 			session.receiveRtcpCache(rp)
 		} else {
-			fmt.Printf("RtcpSRPacketRcvCb cb not found user,had destory\n")
+			logger.Errorf("RtcpSRPacketRcvCb cb not found user,had destory\n")
 		}
 	}
 }
@@ -164,7 +166,7 @@ func RtcpSdesItemRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 		if session, ok := val.(*Session); ok {
 			session.receiveRtcpCache(rp)
 		} else {
-			fmt.Printf("RtcpSdesItemRcvCb cb not found user,had destory\n")
+			logger.Errorf("RtcpSdesItemRcvCb cb not found user,had destory\n")
 		}
 	}
 
@@ -186,7 +188,7 @@ func RtcpSdesPrivateItemRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 		if session, ok := val.(*Session); ok {
 			session.receiveRtcpCache(rp)
 		} else {
-			fmt.Printf("RtcpSdesPrivateItemRcvCb cb not found user,had destory\n")
+			logger.Errorf("RtcpSdesPrivateItemRcvCb cb not found user,had destory\n")
 		}
 	}
 }
@@ -207,7 +209,7 @@ func RtcpByePacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 		if session, ok := val.(*Session); ok {
 			session.receiveRtcpCache(rp)
 		} else {
-			fmt.Printf("RtcpByePacketRcvCb cb not found user,had destory\n")
+			logger.Errorf("RtcpByePacketRcvCb cb not found user,had destory\n")
 		}
 	}
 }
@@ -228,7 +230,7 @@ func RtcpUnKnownPacketRcvCb(rtcpPacket unsafe.Pointer, user unsafe.Pointer) {
 		if session, ok := val.(*Session); ok {
 			session.receiveRtcpCache(rp)
 		} else {
-			fmt.Printf("RtcpUnKnownPacketRcvCb cb not found user,had destory\n")
+			logger.Errorf("RtcpUnKnownPacketRcvCb cb not found user,had destory\n")
 		}
 	}
 }
