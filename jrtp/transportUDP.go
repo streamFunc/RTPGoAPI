@@ -7,8 +7,7 @@ import (
 type TransportRecv interface {
 }
 
-type TransportWrite interface {
-}
+type TransportWrite TransportUDP
 
 type TransportUDP struct {
 	mode                        int
