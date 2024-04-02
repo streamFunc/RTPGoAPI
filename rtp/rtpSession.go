@@ -1,4 +1,4 @@
-package rtp
+package jrtp
 
 import "C"
 import (

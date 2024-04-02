@@ -16,7 +16,7 @@
 // Authors: Werner Dittmann <Werner.Dittmann@t-online.de>
 //
 
-package rtp
+package jrtp
 
 import "sync"
 

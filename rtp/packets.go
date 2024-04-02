@@ -1,4 +1,4 @@
-package rtp
+package jrtp
 
 // CRtpPacketList is either received RTP data packet or generated packets by codecs that can be readily put to
 // stack for transmission. audio data is usually one packet at a time as no pts is required, but video codecs can

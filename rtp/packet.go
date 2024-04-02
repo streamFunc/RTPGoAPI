@@ -1,4 +1,4 @@
-package rtp
+package jrtp
 
 type DataPacket struct {
 	payload     []byte // rtp payload

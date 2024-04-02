@@ -1,4 +1,4 @@
-package rtp
+package jrtp
 
 // RTCP packet types
 const (
