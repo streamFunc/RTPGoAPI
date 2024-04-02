@@ -21,8 +21,8 @@ namespace iRtp {
 
     struct RtpSessionInitData {
         RtpSessionInitData(){}
-        RtpSessionInitData(const std::string& lip,const std::string& rip,int lport,int rport,int pt,int cr)
-        :localIp(lip),remoteIp(rip),localPort(lport),remotePort(rport),payloadType(pt),clockRate(cr){}
+        RtpSessionInitData(const std::string& lip,const std::string& rip,int lport,int rport,int pt,int cr,int f=25)
+        :localIp(lip),remoteIp(rip),localPort(lport),remotePort(rport),payloadType(pt),clockRate(cr),fps(f){}
         ~RtpSessionInitData(){
             if(!extraParams.empty())extraParams.clear();
         }
@@ -109,7 +109,20 @@ namespace iRtp {
         /*
          * it will do nothing. just to ensure that inherit object pointer or reference run destructor function
          * */
-        virtual ~RtpSessionMpl() {}
+        virtual ~RtpSessionMpl() {
+            if(!m_bStopFlag)Stop();
+
+            if(m_pThread){
+                if(m_pThread->joinable()){
+                    std::cerr<<LOG_FIXED_HEADER()<<" The rtp schedule thread does not quit and will try to join..."<<std::endl;
+                    m_pThread->join();
+                    std::this_thread::sleep_for(std::chrono::nanoseconds (1)); //ns out of the piece of time
+                }
+
+                delete m_pThread;
+                m_pThread=nullptr;
+            }
+        }
 
         /*
          * initialize something such as ip,port ,payloadType and so on
@@ -143,7 +156,6 @@ namespace iRtp {
             }
 
             m_pThread=new std::thread(&RtpSessionMpl::loop,this);
-            m_isWaking=true;
 
             return true;
 
@@ -158,13 +170,10 @@ namespace iRtp {
             tryToWakeUp();
 
             if(m_pThread){
-                std::this_thread::sleep_for(std::chrono::nanoseconds (1)); //ns out of the piece of time
-                if(m_pThread->joinable())m_pThread->join();
-                delete m_pThread;
-                m_pThread=nullptr;
+                if(m_pThread->joinable())m_pThread->join(); //block called thread
             }
 
-            return stop(); //caller thread should inherit stop
+            return  stop(); //caller thread should inherit stop
         }
 
         /*
@@ -173,9 +182,10 @@ namespace iRtp {
          * @param [in] len:the len of payload data
          * @param [in] pts:present timestamp
          * @param [in] marker:a flag bit for rtp
+         * @param [in] pt:payload type
          * @return the len of real send
          * */
-        virtual int SendData(const uint8_t *buf, int len, uint16_t marker) = 0;
+        virtual int SendData(const uint8_t *buf, int len, uint16_t marker,int pt=-1) = 0;
 
         /*
          * send data with ts
@@ -183,9 +193,10 @@ namespace iRtp {
          * @param [in] len:the len of payload data
          * @param [in] pts:present timestamp
          * @param [in] marker:a flag bit for rtp
+         * @param [in] pt:payload type
          * @return the len of real send
          * */
-        virtual int SendDataWithTs(const uint8_t *buf, int len, uint32_t pts, uint16_t marker) = 0;
+        virtual int SendDataWithTs(const uint8_t *buf, int len, uint32_t pts, uint16_t marker,int pt=-1) = 0;
 
 
         /*
@@ -472,6 +483,7 @@ namespace iRtp {
         virtual void setDisableRtcp(){}; //inherit class set specific config
 
         void tryToWakeUp(){
+            std::unique_lock<std::mutex> lock(m_mutex);
             if(m_isWaking)return;
             m_cv.notify_all();
         }

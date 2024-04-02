@@ -240,14 +240,14 @@ type (
 	CRtpSessionInitData = C.struct_CRtpSessionInitData
 )
 
-func creatRtpInitData(localIp, remoteIp string, localPort, remotePort, payloadType, clockRate int) *CRtpSessionInitData {
+func creatRtpInitData(localIp, remoteIp string, localPort, remotePort, payloadType, clockRate, fps int) *CRtpSessionInitData {
 	l := C.CString(localIp)
 	defer C.free(unsafe.Pointer(l))
 
 	r := C.CString(remoteIp)
 	defer C.free(unsafe.Pointer(r))
 
-	return (*CRtpSessionInitData)(C.CreateRtpSessionInitData(l, r, (C.int)(localPort), (C.int)(remotePort), (C.int)(payloadType), (C.int)(clockRate)))
+	return (*CRtpSessionInitData)(C.CreateRtpSessionInitData(l, r, (C.int)(localPort), (C.int)(remotePort), (C.int)(payloadType), (C.int)(clockRate), (C.int)(fps)))
 }
 
 func parseRtpPayload(buf []byte) []byte {
@@ -309,19 +309,19 @@ func (rtp *CRtpSessionContext) stopRtpSession() bool {
 	return bool(C.StopRtpSession(rtp))
 }
 
-func (rtp *CRtpSessionContext) sendDataRtpSession(payload []byte, len, marker int) int {
+func (rtp *CRtpSessionContext) sendDataRtpSession(payload []byte, len, marker, payloadType int) int {
 	if rtp == nil {
 		return -1
 	}
-	res := int(C.SendDataRtpSession(rtp, (*C.uint8_t)(unsafe.Pointer(&payload[0])), (C.int)(len), (C.uint16_t)(marker)))
+	res := int(C.SendDataRtpSession(rtp, (*C.uint8_t)(unsafe.Pointer(&payload[0])), (C.int)(len), (C.uint16_t)(marker), (C.int)(payloadType)))
 	return res
 }
 
-func (rtp *CRtpSessionContext) sendDataWithTsRtpSession(payload []byte, len int, pts uint32, marker int) int {
+func (rtp *CRtpSessionContext) sendDataWithTsRtpSession(payload []byte, len int, pts uint32, marker, payloadType int) int {
 	if rtp == nil {
 		return -1
 	}
-	res := int(C.SendDataWithTsRtpSession(rtp, (*C.uint8_t)(unsafe.Pointer(&payload[0])), (C.int)(len), (C.uint32_t)(pts), (C.uint16_t)(marker)))
+	res := int(C.SendDataWithTsRtpSession(rtp, (*C.uint8_t)(unsafe.Pointer(&payload[0])), (C.int)(len), (C.uint32_t)(pts), (C.uint16_t)(marker), (C.int)(payloadType)))
 	return res
 }
 

@@ -24,6 +24,7 @@ type Session struct {
 	LocalPort, RemotePort         int
 	localCtrlPort, RemoteCtrlPort int
 	PayloadType, ClockRate, Mode  int
+	fps                           int
 	streamOutIndex                uint32
 	profile                       string
 	startFlag                     bool
@@ -175,13 +176,13 @@ func (n *Session) CloseSession() error {
 
 func (n *Session) WriteData(rp *DataPacket) (k int, err error) {
 	if n.ctx != nil && n.startFlag {
-		//fmt.Printf("WriteData len:%v pt:%v pts:%v marker:%v \n", len(rp.payload), rp.payloadType, rp.pts, rp.marker)
+		//	logger.Infof("WriteData len:%v pt:%v pts:%v marker:%v \n", len(rp.payload), rp.payloadType, rp.pts, rp.marker)
 		if rp.marker {
 			//n.ctx.sendDataRtpSession(rp.payload, len(rp.payload), 1)
-			n.ctx.sendDataWithTsRtpSession(rp.payload, len(rp.payload), rp.pts, 1)
+			n.ctx.sendDataWithTsRtpSession(rp.payload, len(rp.payload), rp.pts, 1, int(rp.payloadType))
 		} else {
 			//n.ctx.sendDataRtpSession(rp.payload, len(rp.payload), 0)
-			n.ctx.sendDataWithTsRtpSession(rp.payload, len(rp.payload), rp.pts, 0)
+			n.ctx.sendDataWithTsRtpSession(rp.payload, len(rp.payload), rp.pts, 0, int(rp.payloadType))
 		}
 
 	} else {
@@ -200,7 +201,20 @@ func (n *Session) initSession() error {
 				n.streamsOut[0].profile.ClockRate, n.streamsOut[0].payloadTypeNumber, n.streamsOut[0].profile.MimeType)
 		}
 
-		n.ini = creatRtpInitData(n.LocalIp, n.RemoteIp, n.LocalPort, n.RemotePort, n.PayloadType, n.ClockRate)
+		if n.fps <= 0 {
+			if n.streamsOut[0].profile.MediaType == Audio {
+				n.fps = 40
+				logger.Infof("audio seesion fps is default :%v", n.fps)
+			} else if n.streamsOut[0].profile.MediaType == Video {
+				n.fps = 25
+				logger.Infof("video session fps is default :%v", n.fps)
+			} else {
+				logger.Errorf("not audio or video, error")
+				n.fps = -1
+			}
+		}
+
+		n.ini = creatRtpInitData(n.LocalIp, n.RemoteIp, n.LocalPort, n.RemotePort, n.PayloadType, n.ClockRate, n.fps)
 		res := n.ctx.initRtpSession(n.ini)
 		if res == false {
 			return errors.New(fmt.Sprintf("InitSession  fail"))
@@ -543,4 +557,12 @@ func (n *Session) SetRtcpDisable(disableRtcp bool) {
 	} else {
 		n.ctx.SetRtcpDisable(0)
 	}
+}
+
+func (n *Session) SetSessionFps(fps int) {
+	if fps < 0 {
+		logger.Errorf("SetSessionFps fps is error ,not set")
+		return
+	}
+	n.fps = fps
 }

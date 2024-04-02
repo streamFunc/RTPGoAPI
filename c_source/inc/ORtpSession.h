@@ -16,8 +16,8 @@ public:
     virtual ~ORtpSession();
     virtual bool Init(const RtpSessionInitData* pInitData);
 
-    virtual int SendData(const uint8_t *buf, int len, uint16_t marker);
-    virtual int SendDataWithTs(const uint8_t *buf, int len, uint32_t pts, uint16_t marker);
+    virtual int SendData(const uint8_t *buf, int len, uint16_t marker,int pt);
+    virtual int SendDataWithTs(const uint8_t *buf, int len, uint32_t pts, uint16_t marker,int pt);
     virtual int RcvData(uint8_t *buf, int len,RcvCb rcvCb, void *user);
     virtual int RcvDataWithTs(uint8_t *buf, int len, uint32_t ts, RcvCb rcvCb, void *user);
     virtual int RcvPayloadData(uint8_t *buf, int len,RcvCb rcvCb, void *user);

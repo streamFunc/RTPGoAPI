@@ -14,6 +14,9 @@
 
 namespace iRtp{
 
+//static const std::string VERSION("irtp-2.1.6 ");
+
+
 static inline std::string TimeStamp(){
     auto now=std::chrono::system_clock::now();
     std::time_t now_c=std::chrono::system_clock::to_time_t(now);

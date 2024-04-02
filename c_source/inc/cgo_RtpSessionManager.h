@@ -48,9 +48,9 @@ bool InitRtpSession(CRtpSessionManager* p,CRtpSessionInitData* pInitData);
 bool StartRtpSession(CRtpSessionManager* p);
 bool LoopRtpSession(CRtpSessionManager* p);
 bool StopRtpSession(CRtpSessionManager* p);
-int SendDataRtpSession(CRtpSessionManager* p,const uint8_t* buf,int len,uint16_t marker);
+int SendDataRtpSession(CRtpSessionManager* p,const uint8_t* buf,int len,uint16_t marker,int pt);
 int RcvDataRtpSession(CRtpSessionManager* p,uint8_t* buf,int len,CRcvCb rcvCb,void* user);
-int SendDataWithTsRtpSession(CRtpSessionManager* p,const uint8_t* buf,int len,uint32_t pts,uint16_t marker);
+int SendDataWithTsRtpSession(CRtpSessionManager* p,const uint8_t* buf,int len,uint32_t pts,uint16_t marker,int pt);
 int RcvDataWithTsRtpSession(CRtpSessionManager* p,uint8_t* buf,int len,uint32_t ts,CRcvCb rcvCb,void* user);
 
 /*
@@ -107,7 +107,7 @@ bool RegisterUnKnownPacketRcvCb(CRtpSessionManager* p,void* cb,void* user);
  * rtp session initialized param
  */
 CRtpSessionInitData*  CreateRtpSessionInitData(const char* localIp,const char* remoteIp,int localPort
-                                               ,int remotePort,int payloadType,int clockRate);
+                                               ,int remotePort,int payloadType,int clockRate,int fps);
 void DestroyRtpSessionInitData(CRtpSessionInitData* pi);
 
 CRtpSessionInitData* SetLocalIp(CRtpSessionInitData* p,const char* localIp);
