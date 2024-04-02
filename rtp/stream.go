@@ -62,6 +62,11 @@ func (ss *SsrcStream) newSequence() {
 	ss.sequenceNumber = sequenceNo
 }
 
+// PayloadTypeNumber returns the payload type of this stream.
+func (ss *SsrcStream) PayloadTypeNumber() byte {
+	return ss.payloadTypeNumber
+}
+
 type streamOutMap map[uint32]*SsrcStream
 
 type Error string
