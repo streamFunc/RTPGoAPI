@@ -4,10 +4,11 @@ import (
 	"net"
 )
 
-type TransportRecv interface {
+type TransportWrite interface {
 }
 
-type TransportWrite TransportUDP
+type TransportRecv interface {
+}
 
 type TransportUDP struct {
 	mode                        int

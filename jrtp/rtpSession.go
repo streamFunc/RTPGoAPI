@@ -57,7 +57,7 @@ func InitServerLogger(gl *logrus.Logger) {
 	logger = gl.WithFields(logrus.Fields{"module": "rtp"})
 }
 
-func NewSession(rp *TransportWrite, tv TransportRecv) *Session {
+func NewSession(rp *TransportUDP, tv TransportRecv) *Session {
 	initConfigOnce()
 
 	dec := Session{
